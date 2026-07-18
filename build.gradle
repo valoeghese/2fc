@@ -1,13 +1,13 @@
 apply plugin: 'application'
-mainClassName = 'tk.valoeghese.fc0.client.Main'
+mainClassName = 'valoeghese.fc0.client.Main'
 sourceCompatibility = JavaVersion.VERSION_16
 
 if (org.gradle.internal.os.OperatingSystem.current() == org.gradle.internal.os.OperatingSystem.MAC_OS) {
     applicationDefaultJvmArgs = ["-XstartOnFirstThread"]
 }
 
-group 'tk.valoeghese'
-version '0.3.0'
+group 'valoeghese'
+version '2026-07-18'
 
 switch (org.gradle.internal.os.OperatingSystem.current()) {
     case org.gradle.internal.os.OperatingSystem.LINUX:
@@ -53,7 +53,7 @@ dependencies {
     runtimeOnly "org.lwjgl:lwjgl-openal:${project.lwjgl_version}:${project.ext.natives}"
     runtimeOnly "org.lwjgl:lwjgl-stb:${project.lwjgl_version}:${project.ext.natives}"
     // my libraries
-    implementation 'com.github.valoeghese:SOD-java:2.1.1-gradle'
+    //implementation 'com.github.valoeghese:SOD-java:2.1.1-gradle'
     implementation "com.github.valoeghese:Scalpel:${project.scalpel_version}"
 
     compileOnly "com.google.code.findbugs:jsr305:3.0.2"

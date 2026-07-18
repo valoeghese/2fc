@@ -14,10 +14,10 @@ import tk.valoeghese.fc0.world.kingdom.Voronoi;
 import tk.valoeghese.fc0.world.player.Player;
 import tk.valoeghese.fc0.world.save.Save;
 import tk.valoeghese.fc0.world.tile.Tile;
-import tk.valoeghese.sod.BinaryData;
-import tk.valoeghese.sod.ByteArrayDataSection;
-import tk.valoeghese.sod.DataSection;
-import tk.valoeghese.sod.IntArrayDataSection;
+//import tk.valoeghese.sod.BinaryData;
+//import tk.valoeghese.sod.ByteArrayDataSection;
+//import tk.valoeghese.sod.DataSection;
+//import tk.valoeghese.sod.IntArrayDataSection;
 
 import javax.annotation.Nullable;
 import java.util.*;
@@ -550,43 +550,43 @@ public abstract class Chunk implements TileAccess {
 		overflow.appendToChunk(this.tiles, this.meta);
 	}
 
-	public void write(BinaryData data) {
-		ByteArrayDataSection tiles = new ByteArrayDataSection();
-		ByteArrayDataSection lighting = new ByteArrayDataSection();
-		ByteArrayDataSection lightingSky = new ByteArrayDataSection();
-
-		for (int i = 0; i < this.tiles.length; ++i) {
-			tiles.writeByte(this.tiles[i]);
-			tiles.writeByte(this.meta[i]);
-			lighting.writeByte(this.blockLighting[i]);
-			lightingSky.writeByte(this.skyLighting[i]);
-		}
-
-		IntArrayDataSection heightmap = new IntArrayDataSection();
-
-		for (int i : this.heightmap) {
-			heightmap.writeInt(i);
-		}
-
-		IntArrayDataSection kingdoms = new IntArrayDataSection();
-
-		for (int i : this.kingdoms) {
-			kingdoms.writeInt(i);
-		}
-
-		DataSection properties = new DataSection();
-		properties.writeInt(this.x);
-		properties.writeInt(this.z);
-		properties.writeBoolean(this.populated);
-		properties.writeBoolean(this.needsLightingCalcOnLoad);
-
-		data.put("tiles", tiles);
-		data.put("properties", properties);
-		data.put("lightingBlock", lighting);
-		data.put("lightingSky", lightingSky);
-		data.put("heightmap", heightmap);
-		data.put("kingdoms", kingdoms);
-	}
+//	public void write(BinaryData data) {
+//		ByteArrayDataSection tiles = new ByteArrayDataSection();
+//		ByteArrayDataSection lighting = new ByteArrayDataSection();
+//		ByteArrayDataSection lightingSky = new ByteArrayDataSection();
+//
+//		for (int i = 0; i < this.tiles.length; ++i) {
+//			tiles.writeByte(this.tiles[i]);
+//			tiles.writeByte(this.meta[i]);
+//			lighting.writeByte(this.blockLighting[i]);
+//			lightingSky.writeByte(this.skyLighting[i]);
+//		}
+//
+//		IntArrayDataSection heightmap = new IntArrayDataSection();
+//
+//		for (int i : this.heightmap) {
+//			heightmap.writeInt(i);
+//		}
+//
+//		IntArrayDataSection kingdoms = new IntArrayDataSection();
+//
+//		for (int i : this.kingdoms) {
+//			kingdoms.writeInt(i);
+//		}
+//
+//		DataSection properties = new DataSection();
+//		properties.writeInt(this.x);
+//		properties.writeInt(this.z);
+//		properties.writeBoolean(this.populated);
+//		properties.writeBoolean(this.needsLightingCalcOnLoad);
+//
+//		data.put("tiles", tiles);
+//		data.put("properties", properties);
+//		data.put("lightingBlock", lighting);
+//		data.put("lightingSky", lightingSky);
+//		data.put("heightmap", heightmap);
+//		data.put("kingdoms", kingdoms);
+//	}
 
 	@Override
 	@Deprecated // use the world
@@ -598,70 +598,70 @@ public abstract class Chunk implements TileAccess {
 		return this.dirty;
 	}
 
-	public static <T extends Chunk> T read(GameplayWorld<T> parent, WorldGen.ChunkConstructor<T> constructor, BinaryData data) {
-		ByteArrayDataSection tileData = data.getByteArray("tiles");
-		byte[] tiles = new byte[16 * 16 * WORLD_HEIGHT];
-		byte[] meta = new byte[tiles.length];
-		int[] kingdoms = new int[16 * 16];
-
-		if (data.containsSection("kingdoms")) {
-			IntArrayDataSection kingdomsSec = data.getIntArray("kingdoms");
-
-			for (int i = 0; i < 256; ++i) {
-				kingdoms[i] = kingdomsSec.readInt(i);
-			}
-		}
-
-		for (int i = 0; i < tileData.size() / 2; ++i) {
-			int j = i * 2;
-			tiles[i] = tileData.readByte(j);
-			meta[i] = tileData.readByte(j + 1);
-		}
-
-		DataSection properties = data.get("properties");
-		T result = constructor.create(parent, properties.readInt(0), properties.readInt(1), tiles, meta, kingdoms);
-		result.populated = properties.readBoolean(2);
-
-		Chunk resultAsChunk = result;
-
-		try {
-			result.needsLightingCalcOnLoad = properties.readBoolean(3);
-		} catch (Exception ignored) { // @reason support between versions
-		}
-
-		if (data.containsSection("lightingBlock")) {
-			ByteArrayDataSection lighting = data.getByteArray("lightingBlock");
-
-			for (int i = 0; i < lighting.size(); ++i) {
-				result.blockLighting[i] = lighting.readByte(i);
-			}
-		}
-
-		if (data.containsSection("lightingSky")) {
-			ByteArrayDataSection lightingSky = data.getByteArray("lightingSky");
-
-			for (int i = 0; i < lightingSky.size(); ++i) {
-				result.skyLighting[i] = lightingSky.readByte(i);
-			}
-		}
-
-		// update block and sky lighting ""next"" in order to not break it if it's updated by a neighbouring chunk.
-		// If this is not done, loaded chunks may go dark when a neighbouring chunk gets a lighting update.
-		if (!result.needsLightingCalcOnLoad) {
-			System.arraycopy(result.skyLighting, 0, result.nextSkyLighting, 0, result.skyLighting.length);
-			System.arraycopy(result.blockLighting, 0, result.nextBlockLighting, 0, result.blockLighting.length);
-		}
-
-		if (data.containsSection("heightmap")) {
-			IntArrayDataSection heightmap = data.getIntArray("heightmap");
-
-			for (int i = 0; i < heightmap.size(); ++i) {
-				resultAsChunk.heightmap[i] = heightmap.readInt(i);
-			}
-		}
-
-		return result;
-	}
+//	public static <T extends Chunk> T read(GameplayWorld<T> parent, WorldGen.ChunkConstructor<T> constructor, BinaryData data) {
+//		ByteArrayDataSection tileData = data.getByteArray("tiles");
+//		byte[] tiles = new byte[16 * 16 * WORLD_HEIGHT];
+//		byte[] meta = new byte[tiles.length];
+//		int[] kingdoms = new int[16 * 16];
+//
+//		if (data.containsSection("kingdoms")) {
+//			IntArrayDataSection kingdomsSec = data.getIntArray("kingdoms");
+//
+//			for (int i = 0; i < 256; ++i) {
+//				kingdoms[i] = kingdomsSec.readInt(i);
+//			}
+//		}
+//
+//		for (int i = 0; i < tileData.size() / 2; ++i) {
+//			int j = i * 2;
+//			tiles[i] = tileData.readByte(j);
+//			meta[i] = tileData.readByte(j + 1);
+//		}
+//
+//		DataSection properties = data.get("properties");
+//		T result = constructor.create(parent, properties.readInt(0), properties.readInt(1), tiles, meta, kingdoms);
+//		result.populated = properties.readBoolean(2);
+//
+//		Chunk resultAsChunk = result;
+//
+//		try {
+//			result.needsLightingCalcOnLoad = properties.readBoolean(3);
+//		} catch (Exception ignored) { // @reason support between versions
+//		}
+//
+//		if (data.containsSection("lightingBlock")) {
+//			ByteArrayDataSection lighting = data.getByteArray("lightingBlock");
+//
+//			for (int i = 0; i < lighting.size(); ++i) {
+//				result.blockLighting[i] = lighting.readByte(i);
+//			}
+//		}
+//
+//		if (data.containsSection("lightingSky")) {
+//			ByteArrayDataSection lightingSky = data.getByteArray("lightingSky");
+//
+//			for (int i = 0; i < lightingSky.size(); ++i) {
+//				result.skyLighting[i] = lightingSky.readByte(i);
+//			}
+//		}
+//
+//		// update block and sky lighting ""next"" in order to not break it if it's updated by a neighbouring chunk.
+//		// If this is not done, loaded chunks may go dark when a neighbouring chunk gets a lighting update.
+//		if (!result.needsLightingCalcOnLoad) {
+//			System.arraycopy(result.skyLighting, 0, result.nextSkyLighting, 0, result.skyLighting.length);
+//			System.arraycopy(result.blockLighting, 0, result.nextBlockLighting, 0, result.blockLighting.length);
+//		}
+//
+//		if (data.containsSection("heightmap")) {
+//			IntArrayDataSection heightmap = data.getIntArray("heightmap");
+//
+//			for (int i = 0; i < heightmap.size(); ++i) {
+//				resultAsChunk.heightmap[i] = heightmap.readInt(i);
+//			}
+//		}
+//
+//		return result;
+//	}
 
 	public static void shutdown() {
 		System.out.println("Shutting Down Lighting Thread");
