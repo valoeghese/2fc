@@ -1,6 +1,7 @@
 package valoeghese.twofc.world.chunk;
 
 import it.unimi.dsi.fastutil.ints.Int2ByteArrayMap;
+import valoeghese.twofc.util.maths.TilePos;
 
 public final class OverflowChunk implements TileWriter {
 	public OverflowChunk(int x, int z) {
@@ -10,6 +11,11 @@ public final class OverflowChunk implements TileWriter {
 
 	public final int x;
 	public final int z;
+
+	@Override
+	public boolean isInWorld(int x, int y, int z) {
+		return new TilePos(x, y, z).isValidForChunk();
+	}
 
 	@Override
 	public void writeMeta(int x, int y, int z, byte meta) {

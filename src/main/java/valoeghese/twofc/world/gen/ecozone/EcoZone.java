@@ -22,7 +22,7 @@ public abstract class EcoZone {
 		this.surface = surface.id;
 		this.beach = beach.id;
 
-		this.addGenerator(Generator.CITY, NoneGeneratorSettings.INSTANCE);
+//		this.addGenerator(Generator.CITY, NoneGeneratorSettings.INSTANCE);
 		this.addGenerator(Generator.SCATTERED_ORE, ScatteredOreGenerator.GALENA);
 		this.addGenerator(Generator.SCATTERED_ORE, ScatteredOreGenerator.MAGNETITE);
 		this.addGenerator(Generator.SCATTERED_ORE, ScatteredOreGenerator.COAL);

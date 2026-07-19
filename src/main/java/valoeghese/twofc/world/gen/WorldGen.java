@@ -3,10 +3,10 @@ package valoeghese.twofc.world.gen;
 import valoeghese.twofc.util.Pair;
 import valoeghese.twofc.util.noise.Noise;
 import valoeghese.twofc.util.noise.RidgedNoise;
-import valoeghese.twofc.world.GameplayWorld;
+import valoeghese.twofc.world.GeneratorWorld;
+import valoeghese.twofc.world.World;
+import valoeghese.twofc.world.WorldComponent;
 import valoeghese.twofc.world.chunk.Chunk;
-import valoeghese.twofc.world.ChunkAccess;
-import valoeghese.twofc.world.TileAccess;
 import valoeghese.twofc.world.gen.ecozone.EcoZone;
 import valoeghese.twofc.world.gen.generator.Generator;
 import valoeghese.twofc.world.gen.generator.GeneratorSettings;
@@ -17,7 +17,6 @@ import java.util.Random;
 
 public abstract class WorldGen {
 	public WorldGen(long seed, int plane) {
-		this.noise = new Noise(new Random(seed));
 		this.ridges = new RidgedNoise(new Random(seed + 12));
 		this.sand = new Noise(new Random(seed - 29));
 		this.ecoZone = new Noise(new Random(seed + 31));
@@ -26,7 +25,6 @@ public abstract class WorldGen {
 		this.plane = (double) plane / 3;
 	}
 
-	private final Noise noise;
 	private final Noise ridges;
 	private final Noise sand;
 	private final Noise ecoZone;
@@ -35,19 +33,17 @@ public abstract class WorldGen {
 
 	private final Noise cavesHorizontal;
 	private final Noise cavesMain;
-
 	private final double plane;
 
-	public <T extends Chunk> T generateChunk(ChunkConstructor<T> constructor, ChunkAccess parent, int chunkX, int chunkZ, Random rand) {
-		byte[] tiles = new byte[16 * 16 * TileAccess.WORLD_HEIGHT];
+	public <T extends Chunk> T generateChunk(ChunkConstructor<T> constructor, World<T> parent, int chunkX, int chunkZ, Random rand) {
+		byte[] tiles = new byte[16 * 16 * WorldComponent.WORLD_HEIGHT];
 		byte[] meta = new byte[tiles.length];
 
 		double[] noise = generateNoise(chunkX, chunkZ);
 		shapeChunk(chunkX, chunkZ, noise, tiles, meta);
 		carveCaves(chunkX, chunkZ, noise, tiles, meta);
 
-		// TODO not cast like this. This is bad code. Should I just do away with the gajillion interfaces?
-		return constructor.create((GameplayWorld<T>) parent, chunkX, chunkZ, tiles, meta, null);
+		return constructor.create(parent, chunkX, chunkZ, tiles, meta, null);
 	}
 
 	private double[] generateNoise(int chunkX, int chunkZ) {
@@ -86,8 +82,8 @@ public abstract class WorldGen {
 
 				int sandDepth = this.sampleBeaches(totalX, totalZ);
 
-				if (height >= TileAccess.WORLD_HEIGHT) {
-					height = TileAccess.WORLD_HEIGHT - 1; // height cap
+				if (height >= WorldComponent.WORLD_HEIGHT) {
+					height = WorldComponent.WORLD_HEIGHT - 1; // height cap
 				}
 
 				int depth = zone.surface == Tile.SAND.id ? 2 : 1; // sand depth where sand is surface
@@ -161,7 +157,7 @@ public abstract class WorldGen {
 
 	protected abstract double sampleHeight(double x, double z);
 
-	public void populateChunk(GenWorld world, Chunk chunk, Random rand) {
+	public void populateChunk(GeneratorWorld world, Chunk chunk, Random rand) {
 		EcoZone zone = getEcoZoneByPosition(chunk.startX, chunk.startZ);
 
 		for (Pair<Generator, GeneratorSettings> generator : zone.getGenerators()) {
@@ -203,10 +199,6 @@ public abstract class WorldGen {
 		}
 	}
 
-	public double sampleNoise(double x, double y) {
-		return this.noise.sample(x, y, this.plane);
-	}
-
 	protected double sampleRidge(double x, double y) {
 		return this.ridges.sample(x, y, this.plane);
 	}
@@ -217,7 +209,7 @@ public abstract class WorldGen {
 
 	@FunctionalInterface
 	public interface ChunkConstructor<T extends Chunk> {
-		T create(GameplayWorld<T> parent, int x, int z, byte[] tiles, byte[] meta, @Nullable int[] kingdoms);
+		T create(World<T> parent, int x, int z, byte[] tiles, byte[] meta, @Nullable int[] kingdoms);
 	}
 
 	/**
@@ -226,6 +218,12 @@ public abstract class WorldGen {
 	public static class Earth extends WorldGen {
 		public Earth(long seed, int plane) {
 			super(seed, plane);
+			this.noise = new Noise(new Random(seed));
+		}
+
+		private final Noise noise;
+		private double sampleNoise(double x, double z) {
+			return this.noise.sample(x, z);
 		}
 
 		@Override

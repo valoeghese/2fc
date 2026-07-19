@@ -1,6 +1,6 @@
 package valoeghese.twofc.world.tile;
 
-import valoeghese.twofc.world.gen.GenWorld;
+import valoeghese.twofc.world.WorldComponent;
 
 import java.util.function.Predicate;
 
@@ -13,7 +13,7 @@ public class PlantTile extends Tile {
 	private final Predicate<Tile> support;
 
 	@Override
-	public boolean canPlaceAt(GenWorld world, int x, int y, int z) {
+	public boolean canPlaceAt(WorldComponent world, int x, int y, int z) {
 		if (y == 0) {
 			return false;
 		}

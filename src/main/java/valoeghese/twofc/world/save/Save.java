@@ -7,7 +7,7 @@ import valoeghese.twofc.util.Synchronise;
 import valoeghese.twofc.util.maths.Pos;
 import valoeghese.twofc.world.chunk.Chunk;
 import valoeghese.twofc.world.chunk.ChunkLoadStatus;
-import valoeghese.twofc.world.GameplayWorld;
+import valoeghese.twofc.world.World;
 import valoeghese.twofc.world.gen.WorldGen;
 import valoeghese.twofc.world.player.Item;
 import valoeghese.twofc.world.player.Player;
@@ -112,7 +112,7 @@ public class Save implements SaveLike {
 		synchronized (this.saving) {
 			while (chunks.hasNext()) {
 				Chunk c = chunks.next();
-				long key = GameplayWorld.key(c.x, c.z);
+				long key = World.key(c.x, c.z);
 				this.saving.put(key, c);
 				keys.add(key);
 			}
@@ -152,7 +152,7 @@ public class Save implements SaveLike {
 	}
 
 	@Override
-	public void writeForClient(Player player, GameplayWorld world, Iterator<Item> inventory, int invSize, Pos playerPos, Pos spawnPos, long time) {
+	public void writeForClient(Player player, World world, Iterator<Item> inventory, int invSize, Pos playerPos, Pos spawnPos, long time) {
 //		synchronized (COUNT_LOCK) {
 //			count++;
 //		}
@@ -288,7 +288,7 @@ public class Save implements SaveLike {
 //		}
 
 		Random genRand = new Random(parent.getSeed() + 134 * x + -529 * z);
-		parent.addUpgradedChunk(worldGen.generateChunk(constructor, parent, x, z, genRand), status);
+		parent.addUpgradedChunk(worldGen.generateChunk(constructor, (World<T>) parent, x, z, genRand), status);
 	}
 
 	private void saveChunk(Chunk chunk) {

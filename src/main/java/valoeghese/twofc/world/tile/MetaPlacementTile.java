@@ -4,7 +4,7 @@ import it.unimi.dsi.fastutil.bytes.Byte2ObjectArrayMap;
 import valoeghese.twofc.Game2fc;
 import valoeghese.twofc.util.maths.TilePos;
 import valoeghese.twofc.util.maths.Vec2i;
-import valoeghese.twofc.world.TileAccess;
+import valoeghese.twofc.world.WorldComponent;
 
 import java.util.List;
 import java.util.function.Function;
@@ -40,7 +40,7 @@ public class MetaPlacementTile extends Tile {
 	}
 
 	@Override
-	public void onPlace(TileAccess world, TilePos pos) {
+	public void onPlace(WorldComponent world, TilePos pos) {
 		world.writeMeta(pos.x, pos.y, pos.z, (byte) Game2fc.RANDOM.nextInt(this.metaBound));
 	}
 }

@@ -3,7 +3,7 @@ package valoeghese.twofc.client.world;
 import valoeghese.twofc.util.maths.ChunkPos;
 import valoeghese.twofc.world.chunk.Chunk;
 import valoeghese.twofc.world.chunk.ChunkLoadStatus;
-import valoeghese.twofc.world.GameplayWorld;
+import valoeghese.twofc.world.World;
 import valoeghese.twofc.world.save.SaveLike;
 
 import javax.annotation.Nullable;
@@ -12,7 +12,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-public class ClientWorld extends GameplayWorld<ClientChunk> {
+public class ClientWorld extends World<ClientChunk> {
 	public ClientWorld(SaveLike save, long seed, int size) {
 		super(save, seed, size, ClientChunk::new);
 	}

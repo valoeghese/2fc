@@ -1,6 +1,6 @@
 package valoeghese.twofc.world.gen.generator;
 
-import valoeghese.twofc.world.gen.GenWorld;
+import valoeghese.twofc.world.GeneratorWorld;
 
 import java.util.Random;
 
@@ -26,7 +26,7 @@ public class TreeGeneratorSettings implements GeneratorSettings {
 	}
 
 	@Override
-	public int getCount(GenWorld world, Random rand, int startX, int startZ) {
+	public int getCount(GeneratorWorld world, Random rand, int startX, int startZ) {
 		return this.baseTreeCount + (int) (this.treeCountVariation * world.sampleNoise(startX / 64.0, startZ / 64.0));
 	}
 

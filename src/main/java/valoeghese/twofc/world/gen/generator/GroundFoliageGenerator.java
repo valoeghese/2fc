@@ -1,6 +1,6 @@
 package valoeghese.twofc.world.gen.generator;
 
-import valoeghese.twofc.world.gen.GenWorld;
+import valoeghese.twofc.world.GeneratorWorld;
 import valoeghese.twofc.world.tile.Tile;
 
 import java.util.Random;
@@ -11,7 +11,7 @@ public class GroundFoliageGenerator extends Generator<GroundFoliageGeneratorSett
 	}
 
 	@Override
-	public void generate(GenWorld world, GroundFoliageGeneratorSettings settings, int startX, int startZ, Random rand) {
+	public void generate(GeneratorWorld world, GroundFoliageGeneratorSettings settings, int startX, int startZ, Random rand) {
 		int count = settings.getCount(world, rand, startX, startZ);
 
 		while (count --> 0) {

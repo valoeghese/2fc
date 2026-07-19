@@ -3,7 +3,7 @@ package valoeghese.twofc.world.player;
 import valoeghese.twofc.util.maths.ChunkPos;
 import valoeghese.twofc.util.maths.Pos;
 import valoeghese.twofc.util.maths.TilePos;
-import valoeghese.twofc.world.GameplayWorld;
+import valoeghese.twofc.world.World;
 import valoeghese.twofc.world.chunk.Chunk;
 import valoeghese.twofc.world.entity.Lifeform;
 import valoeghese.twofc.world.save.Save;
@@ -46,7 +46,7 @@ public class Player extends Lifeform {
 		this.dev = !this.dev;
 	}
 
-	public void changeWorld(GameplayWorld world, SaveLike save) {
+	public void changeWorld(World world, SaveLike save) {
 		// FIXME when player spawns it it has no damn clue about anything in the world. This probably affects all player teleportation.
 		this.world = world;
 		this.lastChunkloadChunk = null;
@@ -58,19 +58,19 @@ public class Player extends Lifeform {
 			// TODO maybe find a better way of doing this
 			ChunkPos spawnPos = world.getSpawnPos();
 
-			this.world.scheduleForChunk(GameplayWorld.key(spawnPos.x, spawnPos.z), c -> {
+			this.world.scheduleForChunk(World.key(spawnPos.x, spawnPos.z), c -> {
 				int x = (spawnPos.x << 4) + 8;
 				int z = (world.getSpawnPos().z << 4) + 8;
 				this.forceMove(x, world.getHeight(x, z) + 1.0, z);
 			}, "moveToSpawnPos");
 		} else {
-			this.world.scheduleForChunk(GameplayWorld.key(0, 0), c -> this.forceMove(0, world.getHeight(0, 0) + 1.0, 0), "moveToFakeSaveSpawnPos");
+			this.world.scheduleForChunk(World.key(0, 0), c -> this.forceMove(0, world.getHeight(0, 0) + 1.0, 0), "moveToFakeSaveSpawnPos");
 		}
 
 		this.loadNullableInventory(save);
 	}
 
-	public void changeWorld(GameplayWorld world, SaveLike save, Pos movePos) {
+	public void changeWorld(World world, SaveLike save, Pos movePos) {
 		this.world = world;
 		this.lastChunkloadChunk = null;
 		this.chunk = null;

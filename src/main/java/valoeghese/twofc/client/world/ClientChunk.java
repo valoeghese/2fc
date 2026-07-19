@@ -1,8 +1,8 @@
 package valoeghese.twofc.client.world;
 
 import valoeghese.twofc.client.render.model.ChunkMesh;
-import valoeghese.twofc.world.GameplayWorld;
-import valoeghese.twofc.world.TileAccess;
+import valoeghese.twofc.world.World;
+import valoeghese.twofc.world.WorldComponent;
 import valoeghese.twofc.world.chunk.Chunk;
 import valoeghese.twofc.world.chunk.ChunkLoadStatus;
 import valoeghese.twofc.world.tile.Tile;
@@ -10,7 +10,7 @@ import valoeghese.twofc.world.tile.Tile;
 import javax.annotation.Nullable;
 
 public class ClientChunk extends Chunk {
-	public ClientChunk(GameplayWorld<ClientChunk> parent, int x, int z, byte[] tiles, byte[] meta, @Nullable int[] kingdoms) {
+	public ClientChunk(World<ClientChunk> parent, int x, int z, byte[] tiles, byte[] meta, @Nullable int[] kingdoms) {
 		super(parent, x, z, tiles, meta, kingdoms);
 	}
 
@@ -168,7 +168,7 @@ public class ClientChunk extends Chunk {
 	}
 
 	public int getPackedLightLevel(int x, int y, int z) {
-		if (y < 0 || y > TileAccess.WORLD_HEIGHT) {
+		if (y < 0 || y > WorldComponent.WORLD_HEIGHT) {
 			return 0;
 		}
 

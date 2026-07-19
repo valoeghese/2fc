@@ -1,7 +1,7 @@
 package valoeghese.twofc.world.gen.generator;
 
-import valoeghese.twofc.world.TileAccess;
-import valoeghese.twofc.world.gen.GenWorld;
+import valoeghese.twofc.world.GeneratorWorld;
+import valoeghese.twofc.world.WorldComponent;
 import valoeghese.twofc.world.tile.Tile;
 
 import java.util.Random;
@@ -12,7 +12,7 @@ public class ScatteredOreGenerator extends Generator<OreGeneratorSettings> {
 	}
 
 	@Override
-	public void generate(GenWorld world, OreGeneratorSettings generatorSettings, int startX, int startZ, Random rand) {
+	public void generate(GeneratorWorld world, OreGeneratorSettings generatorSettings, int startX, int startZ, Random rand) {
 		int count = generatorSettings.getCount(world, rand, startX, startZ);
 		int extraAttempts = 3;
 
@@ -24,7 +24,7 @@ public class ScatteredOreGenerator extends Generator<OreGeneratorSettings> {
 			if (world.readTile(x, y, z) == Tile.STONE.id) {
 				world.writeTile(x, y, z, generatorSettings.ore);
 
-				if (y < TileAccess.WORLD_HEIGHT) {
+				if (y < WorldComponent.WORLD_HEIGHT) {
 					if (world.readTile(x, y + 1, z) == Tile.STONE.id) {
 						world.writeTile(x, y + 1, z, generatorSettings.ore);
 					}

@@ -2,7 +2,7 @@ package valoeghese.twofc.world.entity;
 
 import valoeghese.twofc.Game2fc;
 import valoeghese.twofc.util.maths.TilePos;
-import valoeghese.twofc.world.GameplayWorld;
+import valoeghese.twofc.world.World;
 import valoeghese.twofc.world.player.Inventory;
 import valoeghese.twofc.world.sound.SoundEffect;
 import valoeghese.twofc.world.tile.Tile;
@@ -20,7 +20,7 @@ public abstract class Lifeform extends Entity {
 		}
 	}
 
-	protected Lifeform(GameplayWorld world, float height, Inventory inventory) {
+	protected Lifeform(World world, float height, Inventory inventory) {
 		super(world, height);
 
 		this.inventory = inventory;

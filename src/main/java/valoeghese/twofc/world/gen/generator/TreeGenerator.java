@@ -1,7 +1,7 @@
 package valoeghese.twofc.world.gen.generator;
 
 import valoeghese.twofc.util.maths.MathsUtils;
-import valoeghese.twofc.world.gen.GenWorld;
+import valoeghese.twofc.world.GeneratorWorld;
 import valoeghese.twofc.world.tile.Tile;
 
 import java.util.Random;
@@ -12,7 +12,7 @@ public class TreeGenerator extends Generator<TreeGeneratorSettings> {
 	}
 
 	@Override
-	public void generate(GenWorld world, TreeGeneratorSettings settings, int startX, int startZ, Random rand) {
+	public void generate(GeneratorWorld world, TreeGeneratorSettings settings, int startX, int startZ, Random rand) {
 		int count = settings.getCount(world, rand, startX, startZ);
 
 		if (rand.nextInt(8) == 0) {
@@ -54,7 +54,7 @@ public class TreeGenerator extends Generator<TreeGeneratorSettings> {
 		}
 	}
 
-	private final void generateConiferTreeLeaves(GenWorld world, Random rand, int x, int y, int z, int height) {
+	private final void generateConiferTreeLeaves(GeneratorWorld world, Random rand, int x, int y, int z, int height) {
 		int stage = 0;
 		for (int yo = height + 2; yo >= 2; --yo, stage++) {
 			int thickness = -2; // this is 1 thickness due to fancy maths
@@ -84,7 +84,7 @@ public class TreeGenerator extends Generator<TreeGeneratorSettings> {
 		}
 	}
 
-	private final void generateSimpleTreeLeaves(GenWorld world, Random rand, int x, int y, int z, int height) {
+	private final void generateSimpleTreeLeaves(GeneratorWorld world, Random rand, int x, int y, int z, int height) {
 		for (int xo = -2; xo <= 2; ++xo) {
 			int totalX = x + xo;
 

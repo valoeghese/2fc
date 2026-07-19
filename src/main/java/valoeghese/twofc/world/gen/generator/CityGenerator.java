@@ -3,18 +3,15 @@ package valoeghese.twofc.world.gen.generator;
 import valoeghese.twofc.util.maths.MathsUtils;
 import valoeghese.twofc.util.maths.Vec2i;
 import valoeghese.twofc.util.noise.Noise;
-import valoeghese.twofc.world.GameplayWorld;
-import valoeghese.twofc.world.TileAccess;
-import valoeghese.twofc.world.gen.GenWorld;
+import valoeghese.twofc.world.WorldComponent;
 import valoeghese.twofc.world.kingdom.Kingdom;
 import valoeghese.twofc.world.kingdom.KingdomIDMapper;
-import valoeghese.twofc.world.tile.Tile;
 
 import java.util.Random;
 
-public class CityGenerator extends Generator<NoneGeneratorSettings> {
+public class CityGenerator {
 	protected CityGenerator(int size) {
-		super("city");
+//		super("city");
 		this.size = size;
 		this.sizeOuter = size + 5;
 	}
@@ -22,132 +19,132 @@ public class CityGenerator extends Generator<NoneGeneratorSettings> {
 	private final int size;
 	private final int sizeOuter;
 
-	@Override
-	public void generate(GenWorld world, NoneGeneratorSettings generatorSettings, int startX, int startZ, Random rand) {
-		int seed = (int) world.getSeed();
-		GameplayWorld gw = world.getGameplayWorld();
-
-		boolean roadsX = 0 == ((startX >> 5) & 0b1);
-		boolean roadsZ = 0 == ((startZ >> 6) & 0b1);
-		final int houseLimit = this.size - 10;
-
-		for (int xo = 0; xo < 16; ++xo) {
-			int x = startX + xo;
-
-			for (int zo = 0; zo < 16; ++zo) {
-				int z = startZ + zo;
-				// Determine Where in the kingdom we are
-				Kingdom kingdom = world.getKingdom(x, z);
-
-				Vec2i centre = kingdom.getCityCentre();
-				int dist = centre.manhattan(x, z);
-
-				if (dist > this.sizeOuter) {
-					int y = getHeightForGeneration(world, x, z) - 1;
-
-					if (y > 51) {
-						if (isOnPath(gw, x, z, kingdom, centre, seed)) {
-							world.writeTile(x, y, z, Tile.AIR.id);
-							world.writeTile(x, y - 1, z, Tile.GRASS.id);
-							world.writeMeta(x, y - 1, z, (byte) 2);
-						}
-					}
-				} else if (dist >= this.size) {
-					final int height = (dist == this.size || dist == this.sizeOuter) ? 9 : 8;
-					int startY = getHeightForGeneration(world, x, z);
-
-					if (startY > 51) {
-						Vec2i north = gw.kingdomById(kingdom.neighbourKingdomVec(0, 1, seed)).getCityCentre();
-						Vec2i east = gw.kingdomById(kingdom.neighbourKingdomVec(1, 0, seed)).getCityCentre();
-						Vec2i south = gw.kingdomById(kingdom.neighbourKingdomVec(0, -1, seed)).getCityCentre();
-						Vec2i west = gw.kingdomById(kingdom.neighbourKingdomVec(-1, 0, seed)).getCityCentre();
-
-						// write gates
-						if (isNear(centre, north, x, z) || isNear(centre, east, x, z)
-								|| isNear(centre, south, x, z) || isNear(centre, west, x, z)) {
-							for (int yo = 4; yo < height; ++yo) {
-								int y = startY + yo;
-								world.writeTile(x, y, z, Tile.STONE_BRICKS.id);
-							}
-						} else { // write wall
-							for (int yo = 0; yo < height; ++yo) {
-								int y = startY + yo;
-								world.writeTile(x, y, z, Tile.STONE_BRICKS.id);
-							}
-						}
-					}
-				} else {
-					int y = getHeightForGeneration(world, x, z) - 1;
-
-					if (y > 51) {
-						// Generate Cities
-						if (dist < houseLimit && xo == 8 && zo == 8) {
-							final int houseHeight = 5;
-							final int wallHeight = houseHeight;
-
-							// Generate City House
-							// Floor and Walls
-							for (int xoo = -5; xoo < 5; ++xoo) {
-								boolean xedge = xoo == -5 || xoo == 4;
-								int xx = x + xoo;
-
-								for (int zoo = -5; zoo < 5; ++zoo) {
-									int zz = z + zoo;
-									world.writeTile(xx, y, zz, Tile.PLANKS.id);
-
-									if (xedge || zoo == -5 || zoo == 4) {
-										for (int yy = 0; yy < wallHeight; ++yy) {
-											world.writeTile(xx, y + yy, zz, Tile.BRICKS.id);
-										}
-									}
-								}
-							}
-
-							// Roof
-							for (int yy = -1; yy < 2; ++yy) {
-								int width = 6 - yy;
-								int finalY = y + yy + houseHeight;
-
-								int l = -width;
-								int h = width - 1;
-
-								for (int xoo = -width; xoo < width; ++xoo) {
-									int finalX = x + xoo;
-
-									for (int zoo = -width; zoo < width; ++zoo) {
-										int finalZ = z + zoo;
-
-										if (yy > -1 || zoo == l || zoo == h || xoo == l || xoo == h) {
-											if (world.isInWorld(finalX, finalY, finalZ)) {
-												world.writeTile(finalX, finalY, finalZ, Tile.STONE_BRICKS.id);
-											}
-										}
-									}
-								}
-							}
-
-							// Pillars
-							for (int yy = 0; yy < houseHeight; ++yy) {
-								if (y + yy < TileAccess.WORLD_HEIGHT) {
-									world.writeTile(x - 6, y + yy, z - 6, Tile.LOG.id);
-									world.writeTile(x + 5, y + yy, z + 5, Tile.LOG.id);
-									world.writeTile(x + 5, y + yy, z - 6, Tile.LOG.id);
-									world.writeTile(x - 6, y + yy, z + 5, Tile.LOG.id);
-								}
-							}
-						}
-
-						if ((roadsX && xo < 2) || (roadsZ && zo < 3)) {
-							// Generate City Roads
-							world.writeTile(x, y, z, Tile.AIR.id);
-							world.writeTile(x, y - 1, z, Tile.GRASS.id);
-							world.writeMeta(x, y - 1, z, (byte) 2);
-						}
-					}
-				}
-			}
-		}
-	}
+//	@Override
+//	public void generate(GenWorld world, NoneGeneratorSettings generatorSettings, int startX, int startZ, Random rand) {
+//		int seed = (int) world.getSeed();
+//		GameplayWorld gw = world.getGameplayWorld();
+//
+//		boolean roadsX = 0 == ((startX >> 5) & 0b1);
+//		boolean roadsZ = 0 == ((startZ >> 6) & 0b1);
+//		final int houseLimit = this.size - 10;
+//
+//		for (int xo = 0; xo < 16; ++xo) {
+//			int x = startX + xo;
+//
+//			for (int zo = 0; zo < 16; ++zo) {
+//				int z = startZ + zo;
+//				// Determine Where in the kingdom we are
+//				Kingdom kingdom = world.getKingdom(x, z);
+//
+//				Vec2i centre = kingdom.getCityCentre();
+//				int dist = centre.manhattan(x, z);
+//
+//				if (dist > this.sizeOuter) {
+//					int y = getHeightForGeneration(world, x, z) - 1;
+//
+//					if (y > 51) {
+//						if (isOnPath(gw, x, z, kingdom, centre, seed)) {
+//							world.writeTile(x, y, z, Tile.AIR.id);
+//							world.writeTile(x, y - 1, z, Tile.GRASS.id);
+//							world.writeMeta(x, y - 1, z, (byte) 2);
+//						}
+//					}
+//				} else if (dist >= this.size) {
+//					final int height = (dist == this.size || dist == this.sizeOuter) ? 9 : 8;
+//					int startY = getHeightForGeneration(world, x, z);
+//
+//					if (startY > 51) {
+//						Vec2i north = gw.kingdomById(kingdom.neighbourKingdomVec(0, 1, seed)).getCityCentre();
+//						Vec2i east = gw.kingdomById(kingdom.neighbourKingdomVec(1, 0, seed)).getCityCentre();
+//						Vec2i south = gw.kingdomById(kingdom.neighbourKingdomVec(0, -1, seed)).getCityCentre();
+//						Vec2i west = gw.kingdomById(kingdom.neighbourKingdomVec(-1, 0, seed)).getCityCentre();
+//
+//						// write gates
+//						if (isNear(centre, north, x, z) || isNear(centre, east, x, z)
+//								|| isNear(centre, south, x, z) || isNear(centre, west, x, z)) {
+//							for (int yo = 4; yo < height; ++yo) {
+//								int y = startY + yo;
+//								world.writeTile(x, y, z, Tile.STONE_BRICKS.id);
+//							}
+//						} else { // write wall
+//							for (int yo = 0; yo < height; ++yo) {
+//								int y = startY + yo;
+//								world.writeTile(x, y, z, Tile.STONE_BRICKS.id);
+//							}
+//						}
+//					}
+//				} else {
+//					int y = getHeightForGeneration(world, x, z) - 1;
+//
+//					if (y > 51) {
+//						// Generate Cities
+//						if (dist < houseLimit && xo == 8 && zo == 8) {
+//							final int houseHeight = 5;
+//							final int wallHeight = houseHeight;
+//
+//							// Generate City House
+//							// Floor and Walls
+//							for (int xoo = -5; xoo < 5; ++xoo) {
+//								boolean xedge = xoo == -5 || xoo == 4;
+//								int xx = x + xoo;
+//
+//								for (int zoo = -5; zoo < 5; ++zoo) {
+//									int zz = z + zoo;
+//									world.writeTile(xx, y, zz, Tile.PLANKS.id);
+//
+//									if (xedge || zoo == -5 || zoo == 4) {
+//										for (int yy = 0; yy < wallHeight; ++yy) {
+//											world.writeTile(xx, y + yy, zz, Tile.BRICKS.id);
+//										}
+//									}
+//								}
+//							}
+//
+//							// Roof
+//							for (int yy = -1; yy < 2; ++yy) {
+//								int width = 6 - yy;
+//								int finalY = y + yy + houseHeight;
+//
+//								int l = -width;
+//								int h = width - 1;
+//
+//								for (int xoo = -width; xoo < width; ++xoo) {
+//									int finalX = x + xoo;
+//
+//									for (int zoo = -width; zoo < width; ++zoo) {
+//										int finalZ = z + zoo;
+//
+//										if (yy > -1 || zoo == l || zoo == h || xoo == l || xoo == h) {
+//											if (world.isInWorld(finalX, finalY, finalZ)) {
+//												world.writeTile(finalX, finalY, finalZ, Tile.STONE_BRICKS.id);
+//											}
+//										}
+//									}
+//								}
+//							}
+//
+//							// Pillars
+//							for (int yy = 0; yy < houseHeight; ++yy) {
+//								if (y + yy < WorldComponent.WORLD_HEIGHT) {
+//									world.writeTile(x - 6, y + yy, z - 6, Tile.LOG.id);
+//									world.writeTile(x + 5, y + yy, z + 5, Tile.LOG.id);
+//									world.writeTile(x + 5, y + yy, z - 6, Tile.LOG.id);
+//									world.writeTile(x - 6, y + yy, z + 5, Tile.LOG.id);
+//								}
+//							}
+//						}
+//
+//						if ((roadsX && xo < 2) || (roadsZ && zo < 3)) {
+//							// Generate City Roads
+//							world.writeTile(x, y, z, Tile.AIR.id);
+//							world.writeTile(x, y - 1, z, Tile.GRASS.id);
+//							world.writeMeta(x, y - 1, z, (byte) 2);
+//						}
+//					}
+//				}
+//			}
+//		}
+//	}
 
 	private static boolean isNear(Vec2i locA, Vec2i locB, int x, int y) {
 		return MathsUtils.distanceLineBetween(locA.getX(), locA.getY(), locB.getX(), locB.getY(), x, y) < 5;
@@ -178,7 +175,7 @@ public class CityGenerator extends Generator<NoneGeneratorSettings> {
 		}
 	}
 
-	public static boolean isInCity(TileAccess world, int x, int z, int size) {
+	public static boolean isInCity(WorldComponent world, int x, int z, int size) {
 		Kingdom kingdom = world.getKingdom(x, z);
 		Vec2i centre = kingdom.getCityCentre();
 		int dist = centre.manhattan(x, z);

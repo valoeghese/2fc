@@ -36,7 +36,7 @@ import valoeghese.twofc.util.maths.ChunkPos;
 import valoeghese.twofc.util.maths.Pos;
 import valoeghese.twofc.util.maths.TilePos;
 import valoeghese.twofc.util.maths.Vec2i;
-import valoeghese.twofc.world.GameplayWorld;
+import valoeghese.twofc.world.World;
 import valoeghese.twofc.world.chunk.Chunk;
 import valoeghese.twofc.world.entity.Entity;
 import valoeghese.twofc.world.gen.ecozone.EcoZone;
@@ -654,7 +654,7 @@ public class Client2fc extends Game2fc<ClientWorld, ClientPlayer> implements Run
 			ChunkPos spawnChunk = this.world.getSpawnPos();
 			this.world.chunkLoad(spawnChunk);
 
-			this.world.scheduleForChunk(GameplayWorld.key(spawnChunk.x, spawnChunk.z), c -> {
+			this.world.scheduleForChunk(World.key(spawnChunk.x, spawnChunk.z), c -> {
 				int x = (c.x << 4) + 8;
 				int z = (c.z << 4) + 8;
 				this.spawnLoc = new Pos(x, c.getHeight(x & 0xF, z & 0xF) + 1, z);

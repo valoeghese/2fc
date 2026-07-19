@@ -13,11 +13,10 @@ import valoeghese.twofc.util.maths.ChunkPos;
 import valoeghese.twofc.util.maths.TilePos;
 import valoeghese.twofc.util.maths.Vec2f;
 import valoeghese.twofc.world.chunk.Chunk;
+import valoeghese.twofc.world.chunk.ChunkLoadStatus;
 import valoeghese.twofc.world.chunk.OverflowChunk;
 import valoeghese.twofc.world.chunk.TileWriter;
-import valoeghese.twofc.world.chunk.ChunkLoadStatus;
 import valoeghese.twofc.world.entity.Entity;
-import valoeghese.twofc.world.gen.GenWorld;
 import valoeghese.twofc.world.gen.WorldGen;
 import valoeghese.twofc.world.gen.ecozone.EcoZone;
 import valoeghese.twofc.world.kingdom.Kingdom;
@@ -28,23 +27,18 @@ import valoeghese.twofc.world.save.ChunkLoadingAccess;
 import valoeghese.twofc.world.save.SaveLike;
 import valoeghese.twofc.world.tile.Tile;
 
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
-import static org.joml.Math.sin;
-
-public abstract class GameplayWorld<T extends Chunk> implements LoadableWorld, ChunkLoadingAccess<T>, KingdomIDMapper {
-	public GameplayWorld(SaveLike save, long seed, int size, WorldGen.ChunkConstructor<T> constructor) {
+public abstract class World<T extends Chunk> implements LoadableWorld, ChunkLoadingAccess<T>, KingdomIDMapper {
+	public World(SaveLike save, long seed, int size, WorldGen.ChunkConstructor<T> constructor) {
 		this.worldGen = new WorldGen.Earth(seed, 0);
 		this.seed = seed;
 
 		this.chunks = new Long2ObjectArrayMap<>();
-		this.overflowChunks = new Long2ObjectArrayMap<>();
 		this.scheduledTasks = new Long2ObjectArrayMap<>();
 
 		this.genRand = new Random(seed);
@@ -65,13 +59,11 @@ public abstract class GameplayWorld<T extends Chunk> implements LoadableWorld, C
 	// Chunk Stuff
 	private final ChunkPos spawnChunk;
 	protected final Long2ObjectMap<T> chunks;
-	private final Long2ObjectMap<OverflowChunk> overflowChunks;
 	@Synchronise
 	private final Long2ObjectMap<List<ScheduledTask>> scheduledTasks;
 
 	private final Random genRand;
 	private final long seed;
-	private final GenWorld genWorld = new GeneratorWorldAccess();
 	private final WorldGen.ChunkConstructor<T> constructor;
 	private final SaveLike save;
 	private final WorldGen worldGen;
@@ -97,11 +89,6 @@ public abstract class GameplayWorld<T extends Chunk> implements LoadableWorld, C
 
 	public Iterator<T> getChunks() {
 		return this.chunks.values().iterator();
-	}
-
-	@Override
-	public double sampleNoise(double x, double y) {
-		return this.worldGen.sampleNoise(x, y);
 	}
 
 	public EcoZone getEcozone(double x, double z) {
@@ -145,27 +132,29 @@ public abstract class GameplayWorld<T extends Chunk> implements LoadableWorld, C
 		return this.chunks.get(key(pos.x, pos.z));
 	}
 
-	@Override
-	public TileWriter getDelayedLoadChunk(int x, int z) {
+	public @Nonnull TileWriter getLoadedChunk(int x, int z) throws NullPointerException {
 		Chunk result = this.getChunk(x, z);
+		return Objects.requireNonNull(result, "Chunk (" + x + ", " + z + " is not loaded!");
+	}
 
-		if (result == null) {
-			// this is possible because operations on the DelayedLoadChunk SHOULD be on the main thread
-			// SHOULD
-			// because population is on the main thread and I think we only use it there
-			long key = key(x, z);
-			OverflowChunk overflow = this.overflowChunks.get(key);
+	@Override
+	public void writeTile(int x, int y, int z, byte tile) {
+		this.getLoadedChunk(x >> 4, z >> 4).writeTile(x & 0xF, y & 0xF, z & 0xF, tile);
+	}
 
-			if (overflow == null) {
-				overflow = new OverflowChunk(x, z);
-				this.overflowChunks.put(key, overflow);
-				this.loadChunk(x, z, ChunkLoadStatus.GENERATE);
-			}
+	@Override
+	public void writeMeta(int x, int y, int z, byte meta) {
+		this.getLoadedChunk(x >> 4, z >> 4).writeMeta(x & 0xF, y & 0xF, z & 0xF, meta);
+	}
 
-			return overflow;
-		} else {
-			return result;
-		}
+	@Override
+	public byte readTile(int x, int y, int z) {
+		return this.getLoadedChunk(x >> 4, z >> 4).readTile(x & 0xF, y & 0xF, z & 0xF);
+	}
+
+	@Override
+	public byte readMeta(int x, int y, int z) {
+		return this.getLoadedChunk(x >> 4, z >> 4).readMeta(x & 0xF, y & 0xF, z & 0xF);
 	}
 
 	@Override
@@ -189,11 +178,6 @@ public abstract class GameplayWorld<T extends Chunk> implements LoadableWorld, C
 	@Override
 	public void addUpgradedChunk(final T chunk, ChunkLoadStatus status) {
 		long key = key(chunk.x, chunk.z);
-		OverflowChunk overflow = this.overflowChunks.remove(key);
-
-		if (overflow != null) {
-			chunk.addOverflow(overflow);
-		}
 
 		// make populate able to access the full chunk.
 		this.chunks.put(key(chunk.x, chunk.z), (T)chunk);
@@ -216,8 +200,28 @@ public abstract class GameplayWorld<T extends Chunk> implements LoadableWorld, C
 			if (!chunk.populated) {
 				chunk.populated = true;
 				this.genRand.setSeed(this.seed + 134 * chunk.x + -529 * chunk.z + 127);
-				this.worldGen.populateChunk(this.genWorld, chunk, this.genRand);
+				this.worldGen.populateChunk(chunk.getGeneratorWorld(), chunk, this.genRand);
 				chunk.computeHeightmap();
+
+				// Give and receive overflow
+				for (int dx = -1; dx <= 1; dx++) {
+					for (int dz = -1; dz <= 1; dz++) {
+						Chunk chunk_ = this.getChunk(chunk.x + dx, chunk.z + dz);
+						if (chunk_ != null && chunk_.populated) {
+							TileWriter tw = chunk_.getGeneratorWorld().getWritable(chunk.x, chunk.z);
+
+							if (tw instanceof OverflowChunk overflow) {
+								chunk.addOverflow(overflow);
+							}
+
+							TileWriter tw1 = chunk.getGeneratorWorld().getWritable(chunk_.x, chunk_.z);
+
+							if (tw1 instanceof OverflowChunk overflow) {
+								chunk_.addOverflow(overflow);
+							}
+						}
+					}
+				}
 			}
 			break;
 		}
@@ -366,7 +370,7 @@ public abstract class GameplayWorld<T extends Chunk> implements LoadableWorld, C
 	}
 
 	@Override
-	public GameplayWorld<?> getGameplayWorld() {
+	public World<?> getGameplayWorld() {
 		return this;
 	}
 
@@ -413,43 +417,6 @@ public abstract class GameplayWorld<T extends Chunk> implements LoadableWorld, C
 		return new ArrayList<>(this.entities);
 	}
 
-	private class GeneratorWorldAccess implements GenWorld {
-		@Override
-		public boolean isInWorld(int x, int y, int z) {
-			return GameplayWorld.this.isInWorld(x, y, z);
-		}
-
-		@Override
-		public TileWriter getDelayedLoadChunk(int x, int z) {
-			return GameplayWorld.this.getDelayedLoadChunk(x, z);
-		}
-
-		@Override
-		public int getHeight(int x, int z, Predicate<Tile> solid) {
-			return GameplayWorld.this.getChunk(x >> 4, z >> 4).getHeight(x & 0xF, z & 0xF, solid);
-		}
-
-		@Override
-		public Kingdom getKingdom(int x, int z) {
-			return GameplayWorld.this.getChunk(x >> 4, z >> 4).getKingdom(x & 0xF, z & 0xF);
-		}
-
-		@Override
-		public double sampleNoise(double x, double y) {
-			return GameplayWorld.this.sampleNoise(x, y);
-		}
-
-		@Override
-		public long getSeed() {
-			return GameplayWorld.this.getSeed();
-		}
-
-		@Override
-		public GameplayWorld<?> getGameplayWorld() {
-			return GameplayWorld.this;
-		}
-	}
-
 	public static long key(int x, int z) {
 		return (((long) x & 0x7FFFFFFF) << 32L) | ((long) z & 0x7FFFFFFF);
 	}
@@ -459,7 +426,7 @@ public abstract class GameplayWorld<T extends Chunk> implements LoadableWorld, C
 	}
 
 	public static void setChunkloadDistance(int chunkTickDist) {
-		GameplayWorld.chunkLoadDist = chunkTickDist;
+		World.chunkLoadDist = chunkTickDist;
 		chunkKeepDist = chunkTickDist + 2;
 	}
 

@@ -6,7 +6,7 @@ import valoeghese.twofc.client.Client2fc;
 import valoeghese.twofc.client.Keybinds;
 import valoeghese.twofc.client.render.Shaders;
 import valoeghese.twofc.client.render.Textures;
-import tk.valoeghese.fc0.client.render.gui.*;
+import valoeghese.twofc.client.render.gui.*;
 import valoeghese.twofc.client.render.gui.GUI;
 import valoeghese.twofc.client.render.gui.MoveableRect;
 import valoeghese.twofc.client.render.gui.ResizableRect;
@@ -18,7 +18,7 @@ import valoeghese.twofc.client.world.ClientPlayer;
 import valoeghese.twofc.util.RaycastResult;
 import valoeghese.twofc.util.maths.ChunkPos;
 import valoeghese.twofc.util.maths.TilePos;
-import valoeghese.twofc.world.GameplayWorld;
+import valoeghese.twofc.world.World;
 import valoeghese.twofc.world.gen.generator.CityGenerator;
 import valoeghese.twofc.world.gen.generator.Generator;
 import valoeghese.twofc.world.kingdom.Kingdom;
@@ -287,7 +287,7 @@ public class GameScreen extends Screen {
 		Inventory inventory = player.getInventory();
 		this.updateSelected(inventory);
 		Item selectedItem = inventory.getSelectedItem();
-		GameplayWorld<?> world = this.game.getWorld();
+		World<?> world = this.game.getWorld();
 
 		if (Keybinds.DESTROY.hasBeenPressed()) {
 			TilePos pos = player.rayCast(10.0, false).pos;

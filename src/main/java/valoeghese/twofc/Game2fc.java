@@ -3,7 +3,7 @@ package valoeghese.twofc;
 import valoeghese.twofc.util.maths.MathsUtils;
 import valoeghese.twofc.world.chunk.Chunk;
 import valoeghese.twofc.world.chunk.ChunkLoadStatus;
-import valoeghese.twofc.world.TileAccess;
+import valoeghese.twofc.world.WorldComponent;
 import valoeghese.twofc.world.player.Player;
 import valoeghese.twofc.world.sound.SoundEffect;
 
@@ -13,7 +13,7 @@ import java.util.*;
 import static org.joml.Math.PI;
 import static org.joml.Math.sin;
 
-public abstract class Game2fc<W extends TileAccess, P extends Player> {
+public abstract class Game2fc<W extends WorldComponent, P extends Player> {
 	protected Game2fc() {
 		instance = this;
 	}

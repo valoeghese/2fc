@@ -6,7 +6,7 @@ import valoeghese.twofc.client.world.ClientPlayer;
 import valoeghese.twofc.client.world.ClientWorld;
 import valoeghese.twofc.util.maths.ChunkPos;
 import valoeghese.twofc.util.maths.Pos;
-import valoeghese.twofc.world.GameplayWorld;
+import valoeghese.twofc.world.World;
 import valoeghese.twofc.world.save.FakeSave;
 
 import static valoeghese.twofc.client.Client2fc.NEW_TITLE;
@@ -65,7 +65,7 @@ public class PauseMenuScreen extends MenuScreen {
 		this.game.switchScreen(this.game.titleScreen);
 
 		world.chunkLoad(new ChunkPos(x >> 4, z >> 4));
-		world.scheduleForChunk(GameplayWorld.key(x >> 4, z >> 4),
+		world.scheduleForChunk(World.key(x >> 4, z >> 4),
 				c -> player.changeWorld(world, this.game.save, new Pos(x, world.getHeight(x, z) + (NEW_TITLE ? 16.0 : 1.0), z)),
 				"changeToTitleWorld");
 	}

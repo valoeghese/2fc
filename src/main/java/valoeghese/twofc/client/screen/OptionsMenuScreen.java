@@ -3,7 +3,7 @@ package valoeghese.twofc.client.screen;
 import valoeghese.twofc.client.Client2fc;
 import valoeghese.twofc.client.render.Textures;
 import valoeghese.twofc.client.render.gui.button.TextButton;
-import valoeghese.twofc.world.GameplayWorld;
+import valoeghese.twofc.world.World;
 import valoeghese.scalpel.Window;
 
 import java.io.FileWriter;
@@ -17,14 +17,14 @@ public class OptionsMenuScreen extends MenuScreen {
 		this.preferred = preferred;
 
 		// Load Chunkload Distance Property
-		GameplayWorld.setChunkloadDistance(Integer.parseInt(this.preferred.getProperty("chunkloadDistance", "8")));
+		World.setChunkloadDistance(Integer.parseInt(this.preferred.getProperty("chunkloadDistance", "8")));
 
 		if (this.preferred.contains("chunkloadDistance")) {
-			System.out.println("Setting chunkload distance from preferences: " + GameplayWorld.getChunkloadDistance());
+			System.out.println("Setting chunkload distance from preferences: " + World.getChunkloadDistance());
 		}
 
 		TextButton chunkLoadDist = new TextButton(
-				"Chunkload Distance: " + switch (GameplayWorld.getChunkloadDistance()) {
+				"Chunkload Distance: " + switch (World.getChunkloadDistance()) {
 					case 6 -> "Near";
 					case 8 -> "Normal";
 					case 10 -> "Far";
@@ -40,25 +40,25 @@ public class OptionsMenuScreen extends MenuScreen {
 		this.addButton(chunkLoadDist, () -> {
 			this.reChunkLoad = true;
 			this.dirty = true;
-			switch (GameplayWorld.getChunkloadDistance()) {
+			switch (World.getChunkloadDistance()) {
 			case 6:
 			default:
-				GameplayWorld.setChunkloadDistance(8);
+				World.setChunkloadDistance(8);
 				this.preferred.setProperty("chunkloadDistance", "8");
 				chunkLoadDist.setText("Chunkload Distance: Normal");
 				break;
 			case 8:
-				GameplayWorld.setChunkloadDistance(10);
+				World.setChunkloadDistance(10);
 				this.preferred.setProperty("chunkloadDistance", "10");
 				chunkLoadDist.setText("Chunkload Distance: Far");
 				break;
 			case 10:
-				GameplayWorld.setChunkloadDistance(12);
+				World.setChunkloadDistance(12);
 				this.preferred.setProperty("chunkloadDistance", "12");
 				chunkLoadDist.setText("Chunkload Distance: Insane");
 				break;
 			case 12:
-				GameplayWorld.setChunkloadDistance(6);
+				World.setChunkloadDistance(6);
 				this.preferred.setProperty("chunkloadDistance", "6");
 				chunkLoadDist.setText("Chunkload Distance: Near");
 				break;

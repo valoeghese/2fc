@@ -4,8 +4,7 @@ import valoeghese.twofc.client.render.tile.TileRenderer;
 import valoeghese.twofc.util.maths.MathsUtils;
 import valoeghese.twofc.util.maths.TilePos;
 import valoeghese.twofc.util.maths.Vec2i;
-import valoeghese.twofc.world.TileAccess;
-import valoeghese.twofc.world.gen.GenWorld;
+import valoeghese.twofc.world.WorldComponent;
 import valoeghese.twofc.world.player.ItemType;
 import valoeghese.twofc.world.player.Item;
 
@@ -162,7 +161,7 @@ public class Tile {
 		return this.render;
 	}
 
-	public boolean canPlaceAt(GenWorld world, int x, int y, int z) {
+	public boolean canPlaceAt(WorldComponent world, int x, int y, int z) {
 		return true;
 	}
 
@@ -170,7 +169,7 @@ public class Tile {
 		return this.translucent;
 	}
 
-	public void onPlace(TileAccess world, TilePos pos) {}
+	public void onPlace(WorldComponent world, TilePos pos) {}
 
 	public boolean isSolid() {
 		return this.solid;

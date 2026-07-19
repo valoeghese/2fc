@@ -5,7 +5,7 @@ import valoeghese.twofc.util.maths.MathsUtils;
 import valoeghese.twofc.util.maths.MutablePos;
 import valoeghese.twofc.util.maths.Pos;
 import valoeghese.twofc.util.maths.TilePos;
-import valoeghese.twofc.world.GameplayWorld;
+import valoeghese.twofc.world.World;
 import valoeghese.twofc.world.LoadableWorld;
 import valoeghese.twofc.world.tile.Tile;
 
@@ -19,7 +19,7 @@ public abstract class Entity {
 		this.height = height;
 	}
 
-	protected Entity(GameplayWorld world, float height) {
+	protected Entity(World world, float height) {
 		this(height);
 		this.world = world;
 	}
@@ -28,7 +28,7 @@ public abstract class Entity {
 	protected final MutablePos nextPos;
 	protected final MutablePos velocity;
 	protected final float height;
-	protected GameplayWorld world;
+	protected World world;
 	protected boolean noClip = false;
 	protected boolean falling = false;
 	protected double friction = 0.75;

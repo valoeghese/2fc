@@ -1,6 +1,6 @@
 package valoeghese.twofc.world.gen.generator;
 
-import valoeghese.twofc.world.gen.GenWorld;
+import valoeghese.twofc.world.GeneratorWorld;
 
 import java.util.Random;
 
@@ -14,7 +14,7 @@ public class RandomCountGeneratorSettings implements GeneratorSettings {
 	private final int dCount;
 
 	@Override
-	public int getCount(GenWorld world, Random rand, int startX, int startZ) {
+	public int getCount(GeneratorWorld world, Random rand, int startX, int startZ) {
 		return this.min + rand.nextInt(this.dCount);
 	}
 }

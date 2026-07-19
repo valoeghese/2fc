@@ -6,8 +6,9 @@ import valoeghese.twofc.Game2fc;
 import valoeghese.twofc.util.Face;
 import valoeghese.twofc.util.maths.ChunkPos;
 import valoeghese.twofc.util.maths.TilePos;
-import valoeghese.twofc.world.GameplayWorld;
-import valoeghese.twofc.world.TileAccess;
+import valoeghese.twofc.world.World;
+import valoeghese.twofc.world.GeneratorWorld;
+import valoeghese.twofc.world.WorldComponent;
 import valoeghese.twofc.world.kingdom.Kingdom;
 import valoeghese.twofc.world.kingdom.Voronoi;
 import valoeghese.twofc.world.player.Player;
@@ -25,8 +26,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 
-public abstract class Chunk implements TileAccess {
-	public Chunk(GameplayWorld parent, int x, int z, byte[] tiles, byte[] meta, @Nullable int[] kingdoms) {
+public abstract class Chunk implements WorldComponent {
+	public Chunk(World<?> parent, int x, int z, byte[] tiles, byte[] meta, @Nullable int[] kingdoms) {
 		this.parent = parent;
 		this.tiles = tiles;
 		this.meta = meta;
@@ -56,6 +57,8 @@ public abstract class Chunk implements TileAccess {
 		} else {
 			this.kingdoms = kingdoms;
 		}
+
+		this.generatorWorld = new GeneratorWorld(this);
 	}
 
 	// mostly values saved. TODO sort the fields properly
@@ -75,11 +78,13 @@ public abstract class Chunk implements TileAccess {
 	public final int startZ;
 	protected final IntSet heightsToRender = new IntArraySet();
 	private List<Player> players = new ArrayList<>();
-	protected GameplayWorld parent;
+	protected World parent;
 	private float natureness = 0.0f;
 	public boolean populated = false;
 	public ChunkLoadStatus status = ChunkLoadStatus.GENERATE;
 	public boolean needsLightingCalcOnLoad = true; // false if the chunk has ever been in the TICKING stage before.
+
+	private final GeneratorWorld generatorWorld;
 
 	// whether the chunk will have to save. Can be caused by an entity, meta, lighting, or tile change.
 	// players are stored separately so don't count
@@ -89,13 +94,12 @@ public abstract class Chunk implements TileAccess {
 	private static final ExecutorService lightingExecutor = Executors.newSingleThreadExecutor();
 
 	@Override
-	public GameplayWorld getGameplayWorld() {
+	public World getGameplayWorld() {
 		return this.parent;
 	}
 
-	@Override
-	public double sampleNoise(double x, double y) {
-		return 0;
+	public GeneratorWorld getGeneratorWorld() {
+		return generatorWorld;
 	}
 
 	public void computeHeightmap() {
@@ -546,6 +550,8 @@ public abstract class Chunk implements TileAccess {
 	}
 
 	public void addOverflow(OverflowChunk overflow) {
+		// priority chunk vs overflow so it's consistent
+		// -> overflow is always applied after population, so should always override (backwards?)
 		overflow.appendToChunk(this.tiles, this.meta);
 	}
 
@@ -586,12 +592,6 @@ public abstract class Chunk implements TileAccess {
 //		data.put("heightmap", heightmap);
 //		data.put("kingdoms", kingdoms);
 //	}
-
-	@Override
-	@Deprecated // use the world
-	public TileWriter getDelayedLoadChunk(int x, int z) {
-		return this.getGameplayWorld().getDelayedLoadChunk(x, z);
-	}
 
 	public boolean isDirty() {
 		return this.dirty;
