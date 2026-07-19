@@ -1,5 +1,5 @@
 apply plugin: 'application'
-mainClassName = 'valoeghese.fc0.client.Main'
+mainClassName = 'valoeghese.twofc.client.Main'
 sourceCompatibility = JavaVersion.VERSION_16
 
 if (org.gradle.internal.os.OperatingSystem.current() == org.gradle.internal.os.OperatingSystem.MAC_OS) {

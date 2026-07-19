@@ -1,0 +1,13 @@
+package valoeghese.twofc.client.render;
+
+import valoeghese.scalpel.Shader;
+
+public final class Shaders {
+	public static Shader terrain;
+	public static Shader gui;
+
+	public static void loadShaders() {
+		terrain = new Shader("assets/shader/terrain_v.glsl", "assets/shader/terrain_f.glsl");
+		gui = new Shader("assets/shader/gui_v.glsl", "assets/shader/gui_f.glsl");
+	}
+}

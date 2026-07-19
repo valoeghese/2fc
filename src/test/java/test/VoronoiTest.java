@@ -1,14 +1,8 @@
 package test;
 
-import tk.valoeghese.fc0.util.maths.Vec2f;
-import tk.valoeghese.fc0.world.kingdom.Kingdom;
-import tk.valoeghese.fc0.world.kingdom.Voronoi;
-
-import javax.swing.*;
-import java.awt.*;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
-import java.awt.image.BufferedImage;
+import valoeghese.twofc.util.maths.Vec2f;
+import valoeghese.twofc.world.kingdom.Kingdom;
+import valoeghese.twofc.world.kingdom.Voronoi;
 
 public class VoronoiTest extends PanelTest {
 	public static void main(String[] args) {

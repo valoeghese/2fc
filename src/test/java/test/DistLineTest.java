@@ -1,7 +1,7 @@
 package test;
 
-import tk.valoeghese.fc0.util.maths.MathsUtils;
-import tk.valoeghese.fc0.util.maths.Vec2f;
+import valoeghese.twofc.util.maths.MathsUtils;
+import valoeghese.twofc.util.maths.Vec2f;
 
 import java.awt.*;
 import java.util.Random;

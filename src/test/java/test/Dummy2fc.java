@@ -1,8 +1,8 @@
 package test;
 
-import tk.valoeghese.fc0.Game2fc;
-import tk.valoeghese.fc0.world.player.Player;
-import tk.valoeghese.fc0.world.sound.SoundEffect;
+import valoeghese.twofc.Game2fc;
+import valoeghese.twofc.world.player.Player;
+import valoeghese.twofc.world.sound.SoundEffect;
 
 public class Dummy2fc extends Game2fc {
 	private Dummy2fc() {
