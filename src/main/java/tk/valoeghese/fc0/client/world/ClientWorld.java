@@ -35,7 +35,7 @@ public class ClientWorld extends GameplayWorld<ClientChunk> {
 			return null;
 		}
 
-		if (c.preRender) {
+		if (c.preRender && !c.needsLightingCalcOnLoad) {
 			return c;
 		}
 
