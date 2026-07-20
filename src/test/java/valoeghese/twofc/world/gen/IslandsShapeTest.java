@@ -5,18 +5,17 @@ import valoeghese.twofc.util.maths.Vec2f;
 import valoeghese.twofc.world.kingdom.Voronoi;
 
 import java.awt.*;
-import java.util.Random;
 
 /**
  * Displays a heightmap of a world where 1 pixel = 4 blocks (not average, picks instead the first in the block selection)
  */
-public class CoreWorldGenShapeTest extends PanelTest {
+public class IslandsShapeTest extends PanelTest {
 	public static void main(String[] args) {
-		new CoreWorldGenShapeTest().scale(6).start();
+		new IslandsShapeTest().start();
 	}
 
 	static long seed = 1;//new Random().nextLong();
-	static Earth worldGen = new Earth(seed);
+	static Earth.Debug worldGen = new Earth.Debug(seed);
 
 	@Override
 	protected int getColour(int x, int z) {

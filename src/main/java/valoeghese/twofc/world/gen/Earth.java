@@ -33,7 +33,7 @@ public class Earth extends WorldGen {
         }
     }
 
-    public int regionType(Vec2f pos) {
+    private int regionType(Vec2f pos) {
         int x = (int) pos.getX();
         int z = (int) pos.getY();
 
@@ -69,5 +69,26 @@ public class Earth extends WorldGen {
 //        double bias = 0.5 + 0.5 * this.sampleNoise(x / 600.0, (z / 600.0) - 1);
 //        return continent + (bias * hills) + ((1.0 - bias) * mountains);
         return 52;
+    }
+
+    // For debug
+    public static final class Debug {
+        public Debug(long seed) {
+            this.earth = new Earth(seed);
+            this.seed = seed;
+        }
+
+        private final Earth earth;
+        private final long seed;
+
+        public long getSeed() {
+            return seed;
+        }
+
+        // Exposed methods for debug
+
+        public int regionType(Vec2f pos) {
+            return this.earth.regionType(pos);
+        }
     }
 }
