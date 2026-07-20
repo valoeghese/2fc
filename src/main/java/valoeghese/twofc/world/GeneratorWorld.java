@@ -25,7 +25,7 @@ public class GeneratorWorld implements WorldComponent {
         this.buffer = new TileWriter[][] {
                 { new OverflowChunk(x - 1, z - 1), new OverflowChunk(x, z - 1), new OverflowChunk(x + 1, z - 1) },
                 { new OverflowChunk(x - 1, z), chunk, new OverflowChunk(x + 1, z) },
-                { new OverflowChunk(x - 1, z + 1), new OverflowChunk(x, z + 1), chunk, new OverflowChunk(x + 1, z + 1) }
+                { new OverflowChunk(x - 1, z + 1), new OverflowChunk(x, z + 1), new OverflowChunk(x + 1, z + 1) }
         };
 
         this.x = x;
