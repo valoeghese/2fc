@@ -1,5 +1,6 @@
 package valoeghese.twofc.world.gen;
 
+import valoeghese.twofc.util.Face;
 import valoeghese.twofc.util.maths.Vec2f;
 import valoeghese.twofc.util.noise.Noise;
 
@@ -33,7 +34,12 @@ public class Earth extends WorldGen {
         }
     }
 
-    private int regionType(Vec2f pos) {
+    // (terrain) type: 0 = ocean, 1 = mountains, 2 = floodplains
+    private record RegionInfo(int type, Face f) {
+
+    }
+
+    private RegionInfo regionType(Vec2f pos) {
         int x = (int) pos.getX();
         int z = (int) pos.getY();
 

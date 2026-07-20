@@ -112,17 +112,17 @@ public class ClientPlayer extends Player  {
 
 					// yandere dev level if statement. I approve.
 					if (nx == -1) {
-						face = Face.SOUTH;
-					} else if (nx == 1) {
 						face = Face.NORTH;
+					} else if (nx == 1) {
+						face = Face.SOUTH;
 					} else if (ny == -1) {
 						face = Face.DOWN;
 					} else if (ny == 1) {
 						face = Face.UP;
 					} else if (nz == -1) {
-						face = Face.WEST;
-					} else if (nz == 1) {
 						face = Face.EAST;
+					} else if (nz == 1) {
+						face = Face.WEST;
 					}
 
 					if (face == null) {
