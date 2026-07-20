@@ -139,22 +139,22 @@ public abstract class World<T extends Chunk> implements LoadableWorld, ChunkLoad
 
 	@Override
 	public void writeTile(int x, int y, int z, byte tile) {
-		this.getLoadedChunk(x >> 4, z >> 4).writeTile(x & 0xF, y & 0xF, z & 0xF, tile);
+		this.getLoadedChunk(x >> 4, z >> 4).writeTile(x & 0xF, y, z & 0xF, tile);
 	}
 
 	@Override
 	public void writeMeta(int x, int y, int z, byte meta) {
-		this.getLoadedChunk(x >> 4, z >> 4).writeMeta(x & 0xF, y & 0xF, z & 0xF, meta);
+		this.getLoadedChunk(x >> 4, z >> 4).writeMeta(x & 0xF, y, z & 0xF, meta);
 	}
 
 	@Override
 	public byte readTile(int x, int y, int z) {
-		return this.getLoadedChunk(x >> 4, z >> 4).readTile(x & 0xF, y & 0xF, z & 0xF);
+		return this.getLoadedChunk(x >> 4, z >> 4).readTile(x & 0xF, y, z & 0xF);
 	}
 
 	@Override
 	public byte readMeta(int x, int y, int z) {
-		return this.getLoadedChunk(x >> 4, z >> 4).readMeta(x & 0xF, y & 0xF, z & 0xF);
+		return this.getLoadedChunk(x >> 4, z >> 4).readMeta(x & 0xF, y, z & 0xF);
 	}
 
 	@Override
