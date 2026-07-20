@@ -1,6 +1,8 @@
 package valoeghese.twofc.world.gen;
 
 import test.PanelTest;
+import valoeghese.twofc.util.maths.Vec2f;
+import valoeghese.twofc.world.kingdom.Voronoi;
 
 import java.awt.*;
 import java.util.Random;
@@ -13,11 +15,13 @@ public class CoreWorldGenShapeTest extends PanelTest {
 		new CoreWorldGenShapeTest().scale(6).start();
 	}
 
-	static Earth worldGen = new Earth(new Random().nextLong());
+	static long seed = 1;//new Random().nextLong();
+	static Earth worldGen = new Earth(seed);
 
 	@Override
 	protected int getColour(int x, int z) {
-		float height = 0;//0.5f + (float) worldGen.sampleMountains(x, z) * 0.005f;
-		return Color.getHSBColor(0.0f, 0.0f, height > 1.0f? 1.0f:height).getRGB();
+		Vec2f centre = Voronoi.sampleVoronoi((float) x / 20, (float)z / 20, (int)(seed & (long)0xFFFFFFFF), 0.2f);
+		int region = worldGen.regionType(centre);
+		return Color.getHSBColor(region == 2 ? 0.55f : region == 1 ? 0.4f : 0.7f, 1.0f, 0.8f).getRGB();
 	}
 }
