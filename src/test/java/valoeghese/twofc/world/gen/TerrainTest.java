@@ -29,7 +29,7 @@ public class TerrainTest extends PanelTest implements KingdomIDMapper {
 	}
 
 	static final long seed = new Random().nextLong();
-	static WorldGen worldGen = new WorldGen.Earth(seed, 0);
+	static WorldGen worldGen = new Earth(seed);
 	private static final Map<Vec2f, Kingdom> KINGDOMS = new HashMap<>();
 
 	@Override

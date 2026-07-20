@@ -16,16 +16,13 @@ import javax.annotation.Nullable;
 import java.util.Random;
 
 public abstract class WorldGen {
-	public WorldGen(long seed, int plane) {
-		this.ridges = new RidgedNoise(new Random(seed + 12));
+	public WorldGen(long seed) {
 		this.sand = new Noise(new Random(seed - 29));
 		this.ecoZone = new Noise(new Random(seed + 31));
 		this.cavesHorizontal = new Noise(new Random(seed + 79));
 		this.cavesMain = new Noise(new Random(seed - 79));
-		this.plane = (double) plane / 3;
 	}
 
-	private final Noise ridges;
 	private final Noise sand;
 	private final Noise ecoZone;
 
@@ -33,7 +30,6 @@ public abstract class WorldGen {
 
 	private final Noise cavesHorizontal;
 	private final Noise cavesMain;
-	private final double plane;
 
 	public <T extends Chunk> T generateChunk(ChunkConstructor<T> constructor, World<T> parent, int chunkX, int chunkZ, Random rand) {
 		byte[] tiles = new byte[16 * 16 * WorldComponent.WORLD_HEIGHT];
@@ -59,7 +55,6 @@ public abstract class WorldGen {
 				int totalZ = z + blockZ;
 
 				noise[x * 16 + z] = this.sampleHeight(totalX, totalZ);
-
 			}
 		}
 
@@ -199,10 +194,6 @@ public abstract class WorldGen {
 		}
 	}
 
-	protected double sampleRidge(double x, double y) {
-		return this.ridges.sample(x, y, this.plane);
-	}
-
 	int sampleBeaches(int totalX, int totalZ) {
 		return (int) (2.1 * sand.sample(totalX / 21.0, totalZ / 21.0));
 	}
@@ -210,40 +201,5 @@ public abstract class WorldGen {
 	@FunctionalInterface
 	public interface ChunkConstructor<T extends Chunk> {
 		T create(World<T> parent, int x, int z, byte[] tiles, byte[] meta, @Nullable int[] kingdoms);
-	}
-
-	/**
-	 * World Generator for Earth.
-	 */
-	public static class Earth extends WorldGen {
-		public Earth(long seed, int plane) {
-			super(seed, plane);
-			this.noise = new Noise(new Random(seed));
-		}
-
-		private final Noise noise;
-		private double sampleNoise(double x, double z) {
-			return this.noise.sample(x, z);
-		}
-
-		@Override
-		protected double sampleHeight(double x, double z) {
-			// Stage one: sample continent shape
-			double continent = 43 + 20 * this.sampleNoise((x / 810.0) - 0.3, (z / 810.0) - 0.3);
-
-			// Stage two: sample mountains and hills
-			double mountains = this.sampleMountains(x, z);
-
-			double hills = 20 * this.sampleNoise(x / 90.0, z / 90.0) + 12 * this.sampleNoise(x / 32.0, z / 32.0);
-
-			// Stage three: bias mountains and hills
-			double bias = 0.5 + 0.5 * this.sampleNoise(x / 600.0, (z / 600.0) - 1);
-			return continent + (bias * hills) + ((1.0 - bias) * mountains);
-		}
-
-		public double sampleMountains(double x, double z) {
-			double mountains = 68 * this.sampleRidge(x / 510.0, z / 510.0);
-			return mountains + 36 * this.sampleRidge((x / 260.0) - 1, z / 260.0);
-		}
 	}
 }

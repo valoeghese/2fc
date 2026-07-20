@@ -14,7 +14,7 @@ public class HeightmapTest extends PanelTest {
 
 	}
 
-	static WorldGen worldGen = new WorldGen.Earth(new Random().nextLong(), 0);
+	static WorldGen worldGen = new Earth(new Random().nextLong());
 
 	@Override
 	protected int getColour(int x, int z) {

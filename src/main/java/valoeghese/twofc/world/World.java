@@ -17,6 +17,7 @@ import valoeghese.twofc.world.chunk.ChunkLoadStatus;
 import valoeghese.twofc.world.chunk.OverflowChunk;
 import valoeghese.twofc.world.chunk.TileWriter;
 import valoeghese.twofc.world.entity.Entity;
+import valoeghese.twofc.world.gen.Earth;
 import valoeghese.twofc.world.gen.WorldGen;
 import valoeghese.twofc.world.gen.ecozone.EcoZone;
 import valoeghese.twofc.world.kingdom.Kingdom;
@@ -35,7 +36,7 @@ import java.util.function.Predicate;
 
 public abstract class World<T extends Chunk> implements LoadableWorld, ChunkLoadingAccess<T>, KingdomIDMapper {
 	public World(SaveLike save, long seed, int size, WorldGen.ChunkConstructor<T> constructor) {
-		this.worldGen = new WorldGen.Earth(seed, 0);
+		this.worldGen = new Earth(seed);
 		this.seed = seed;
 
 		this.chunks = new Long2ObjectArrayMap<>();
