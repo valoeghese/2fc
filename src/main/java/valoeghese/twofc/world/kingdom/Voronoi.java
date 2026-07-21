@@ -162,6 +162,30 @@ public final class Voronoi {
 		return seed & mask;
 	}
 
+	public static int random2(int x, int y, int seed, int mask) {
+		// Cursed mixed xorshift and lcg generator
+		seed += x;
+		seed ^= seed << 13;
+		seed ^= seed >> 17;
+		seed ^= seed << 5;
+		seed = 1103515245 * seed + 12345;
+
+		seed += y;
+
+		seed ^= seed << 13;
+		seed ^= seed >> 17;
+		seed ^= seed << 5;
+		seed = 1103515245 * seed + 12345;
+
+		seed += y;
+		seed ^= seed << 13;
+		seed ^= seed >> 17;
+		seed ^= seed << 5;
+		seed = 1103515245 * seed + 12345;
+
+		return seed & mask;
+	}
+
 	private static float squaredDist(float x0, float y0, float x1, float y1) {
 		float dx = x1 - x0;
 		float dy = y1 - y0;

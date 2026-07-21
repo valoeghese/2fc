@@ -1,9 +1,18 @@
 package valoeghese.twofc.world.gen;
 
 import valoeghese.twofc.util.Face;
+import valoeghese.twofc.util.FastJitteredGridObjCache64;
+import valoeghese.twofc.util.FastObjCache64;
+import valoeghese.twofc.util.maths.MathsUtils;
 import valoeghese.twofc.util.maths.Vec2f;
+import valoeghese.twofc.util.maths.Vec2i;
 import valoeghese.twofc.util.noise.Noise;
+import valoeghese.twofc.world.kingdom.Voronoi;
 
+import javax.annotation.Nullable;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 import java.util.Random;
 
 /**
@@ -12,9 +21,11 @@ import java.util.Random;
 public class Earth extends WorldGen {
     public Earth(long seed) {
         super(seed);
+        this.seed = seed;
         this.noise = new Noise(new Random(seed));
     }
 
+    private final long seed;
     private final Noise noise;
     private double sampleNoise(double x, double z) {
         return this.noise.sample(x, z);
@@ -34,18 +45,15 @@ public class Earth extends WorldGen {
         }
     }
 
+    // Public for debug
     // (terrain) type: 0 = ocean, 1 = mountains, 2 = floodplains
-    private record RegionInfo(int type, Face f) {
-
+    public record RegionInfo(int type, @Nullable Face outflow1, @Nullable Face outflow2) {
     }
 
-    private RegionInfo regionType(Vec2f pos) {
-        int x = (int) pos.getX();
-        int z = (int) pos.getY();
-
+    private RegionInfo regionType(int x, int z) {
         int centre = rootRegionType(x, z);
         if (centre == 0) {
-            return 0;
+            return new RegionInfo(0, null, null);
         }
 
         // check neighbours (names from current sun direction)
@@ -55,11 +63,61 @@ public class Earth extends WorldGen {
         int south = rootRegionType(x + 1, z);
 
         if (east == 0 || north == 0 || west == 0 || south == 0) {
-            return (pos.id() & 1) == 0 ? 2 : 1;
+            int hash = Voronoi.random2(x, z, (int)(this.seed & 0xFFFFFFFFL), -1);
+            int type = (hash & 1) == 0 ? 2 : 1;
+            // pick outflows
+            List<Face> options = new ArrayList<>();
+            if (east == 0) options.add(Face.EAST);
+            if (north == 0) options.add(Face.NORTH);
+            if (west == 0) options.add(Face.WEST);
+            if (south == 0) options.add(Face.SOUTH);
+            Random random = new Random(hash);
+
+            Face selected;
+            Face selected2;
+            if (type == 2) {
+                selected = options.get(random.nextInt(options.size()));
+                selected2 = options.get(random.nextInt(options.size()));
+            } else {
+                selected = options.remove(random.nextInt(options.size()));
+                selected2 = options.isEmpty() ? null : options.get(random.nextInt(options.size()));
+            }
+
+            return new RegionInfo(type, selected, selected2);
         } else {
-            return 1;
+            return new RegionInfo(1, null, null);
         }
     }
+    private final FastObjCache64<RegionInfo> regionTypeCache = new FastObjCache64<>(this::regionType);
+
+    private RegionInfo kruskal(int x, int z, int offset, FastObjCache64<RegionInfo> cache) {
+        RegionInfo regionType = cache.sample(x, z);
+
+        if (regionType.type != 1 || regionType.outflow1 != null) {
+            return regionType;
+        }
+
+        RegionInfo north = cache.sample(x - 1, z);
+        RegionInfo east = cache.sample(x, z - 1);
+        RegionInfo south = cache.sample(x + 1, z);
+        RegionInfo west = cache.sample(x, z + 1);
+
+        List<Face> options = new ArrayList<>();
+        if (north.outflow1 != null) options.add(Face.NORTH);
+        if (east.outflow1 != null) options.add(Face.EAST);
+        if (south.outflow1 != null) options.add(Face.SOUTH);
+        if (west.outflow1 != null) options.add(Face.WEST);
+
+        if (options.isEmpty()) {
+            return regionType;
+        }
+
+        Random random = new Random(Voronoi.random2(x, z, (int)(this.seed & 0xFFFFFFFFL) + offset, -1));
+        Face selected = options.get(random.nextInt(options.size()));
+        return new RegionInfo(regionType.type, selected, null);
+    }
+    private final FastObjCache64<RegionInfo> kruskal1Cache = new FastObjCache64<>((x, z) -> kruskal(x, z, 1, this.regionTypeCache));
+    private final FastObjCache64<RegionInfo> kruskal2Cache = new FastObjCache64<>((x, z) -> kruskal(x, z, 2, this.kruskal1Cache));
 
     @Override
     protected double sampleHeight(double x, double z) {
@@ -93,8 +151,12 @@ public class Earth extends WorldGen {
 
         // Exposed methods for debug
 
-        public int regionType(Vec2f pos) {
-            return this.earth.regionType(pos);
+        public int regionType(int x, int z) {
+            return this.earth.regionType(x, z).type;
+        }
+
+        public RegionInfo riverInfo(int x, int z) {
+            return this.earth.kruskal2Cache.sample(x, z);
         }
     }
 }
