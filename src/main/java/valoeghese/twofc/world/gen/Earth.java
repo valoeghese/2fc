@@ -90,7 +90,7 @@ public class Earth extends WorldGen {
     }
     private final FastObjCache64<RegionInfo> regionTypeCache = new FastObjCache64<>(this::regionType);
 
-    private RegionInfo kruskal(int x, int z, int offset, FastObjCache64<RegionInfo> cache) {
+    private RegionInfo kruskal(int x, int z, int offset, float chance, FastObjCache64<RegionInfo> cache) {
         RegionInfo regionType = cache.sample(x, z);
 
         if (regionType.type != 1 || regionType.outflow1 != null) {
@@ -103,21 +103,39 @@ public class Earth extends WorldGen {
         RegionInfo west = cache.sample(x, z + 1);
 
         List<Face> options = new ArrayList<>();
-        if (north.outflow1 != null) options.add(Face.NORTH);
-        if (east.outflow1 != null) options.add(Face.EAST);
-        if (south.outflow1 != null) options.add(Face.SOUTH);
-        if (west.outflow1 != null) options.add(Face.WEST);
+        if (north.outflow1 != null) {
+            options.add(Face.NORTH);
+            if (north.type == 2) options.add(Face.NORTH);
+        }
+        if (east.outflow1 != null) {
+            options.add(Face.EAST);
+            if (east.type == 2) options.add(Face.EAST);
+        }
+        if (south.outflow1 != null) {
+            options.add(Face.SOUTH);
+            if (south.type == 2) options.add(Face.SOUTH);
+        }
+        if (west.outflow1 != null) {
+            options.add(Face.WEST);
+            if (west.type == 2) options.add(Face.WEST);
+        }
 
         if (options.isEmpty()) {
             return regionType;
         }
 
         Random random = new Random(Voronoi.random2(x, z, (int)(this.seed & 0xFFFFFFFFL) + offset, -1));
+        random.nextInt();
         Face selected = options.get(random.nextInt(options.size()));
+
+        if (chance < 1.0f && random.nextFloat() > chance) {
+            return regionType;
+        }
+
         return new RegionInfo(regionType.type, selected, null);
     }
-    private final FastObjCache64<RegionInfo> kruskal1Cache = new FastObjCache64<>((x, z) -> kruskal(x, z, 1, this.regionTypeCache));
-    private final FastObjCache64<RegionInfo> kruskal2Cache = new FastObjCache64<>((x, z) -> kruskal(x, z, 2, this.kruskal1Cache));
+    private final FastObjCache64<RegionInfo> kruskal1Cache = new FastObjCache64<>((x, z) -> kruskal(x, z, 1, 0.6f, this.regionTypeCache));
+    private final FastObjCache64<RegionInfo> kruskal2Cache = new FastObjCache64<>((x, z) -> kruskal(x, z, 2, 1.0f, this.kruskal1Cache));
 
     @Override
     protected double sampleHeight(double x, double z) {

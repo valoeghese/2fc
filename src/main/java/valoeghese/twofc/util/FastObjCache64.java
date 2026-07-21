@@ -15,7 +15,7 @@ public class FastObjCache64<T> {
     private final FastObjCache64.Sampler<T> wrapped;
 
     @SuppressWarnings("unchecked")
-    public T sample(int x, int y) {
+    public synchronized T sample(int x, int y) {
         // get index: lowest 3 bits of parameters
         int index = ((x & 0x7) << 3) | (y & 0x7);
         // check key match
