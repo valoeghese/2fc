@@ -1,19 +1,13 @@
 package valoeghese.twofc.world.gen;
 
 import valoeghese.twofc.util.Face;
-import valoeghese.twofc.util.FastJitteredGridObjCache64;
 import valoeghese.twofc.util.FastObjCache64;
-import valoeghese.twofc.util.maths.MathsUtils;
 import valoeghese.twofc.util.maths.Vec2f;
-import valoeghese.twofc.util.maths.Vec2i;
 import valoeghese.twofc.util.noise.Noise;
 import valoeghese.twofc.world.kingdom.Voronoi;
 
 import javax.annotation.Nullable;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.Random;
+import java.util.*;
 
 /**
  * World generator for earth.
@@ -90,7 +84,7 @@ public class Earth extends WorldGen {
     }
     private final FastObjCache64<RegionInfo> regionTypeCache = new FastObjCache64<>(this::regionType);
 
-    private RegionInfo kruskal(int x, int z, int offset, float chance, FastObjCache64<RegionInfo> cache) {
+    private RegionInfo flow(int x, int z, int offset, float chance, FastObjCache64<RegionInfo> cache) {
         RegionInfo regionType = cache.sample(x, z);
 
         if (regionType.type != 1 || regionType.outflow1 != null) {
@@ -134,8 +128,95 @@ public class Earth extends WorldGen {
 
         return new RegionInfo(regionType.type, selected, null);
     }
-    private final FastObjCache64<RegionInfo> kruskal1Cache = new FastObjCache64<>((x, z) -> kruskal(x, z, 1, 0.6f, this.regionTypeCache));
-    private final FastObjCache64<RegionInfo> kruskal2Cache = new FastObjCache64<>((x, z) -> kruskal(x, z, 2, 1.0f, this.kruskal1Cache));
+    private final FastObjCache64<RegionInfo> flow1cache = new FastObjCache64<>((x, z) -> flow(x, z, 1, 0.6f, this.regionTypeCache));
+    private final FastObjCache64<RegionInfo> flow2cache = new FastObjCache64<>((x, z) -> flow(x, z, 2, 1.0f, this.flow1cache));
+
+    public record Edge(Vec2f start, Vec2f end, double weight) implements Comparable<Edge> {
+        @Override
+        public int compareTo(Edge edge) {
+            return Double.compare(weight, edge.weight);
+        }
+    }
+
+    private void createRivers(int x, int z) {
+        final FastObjCache64<RegionInfo> cache = this.flow2cache;
+
+        RegionInfo region = cache.sample(x, z);
+        RegionInfo north = cache.sample(x - 1, z);
+        RegionInfo east = cache.sample(x, z - 1);
+        RegionInfo south = cache.sample(x + 1, z);
+        RegionInfo west = cache.sample(x, z + 1);
+
+        // Create vertices
+
+        // makes code nicer
+        enum Type {
+            CENTRAL,
+            EDGE,
+            CORNER
+        }
+        record Vertex(Vec2f point, Type type) {
+        }
+
+        final int DETAIL = 4;
+        Vertex[][] vertices = new Vertex[DETAIL][DETAIL];
+
+        // other side overlapping with neighbour's start
+        // thus - 1 in scale of x/z
+        for (int i = 0; i < DETAIL; i++) {
+            int innerX = x * (DETAIL - 1) + i;
+            boolean edgeX = i == 0 || i == DETAIL - 1;
+
+            for (int j = 0; j < DETAIL; j++) {
+                int innerZ = z * (DETAIL - 1) + j;
+                boolean edgeZ = j == 0 || j == DETAIL - 1;
+
+                Vec2f pt = Voronoi.sampleVoronoiGrid(innerX, innerZ, (int)(this.seed & 0xFFFFFFFFL) + 123, 0.3f);
+                Type type = edgeZ && edgeX ? Type.CORNER : (edgeZ || edgeX) ? Type.EDGE : Type.CENTRAL;
+                vertices[i][j] = new Vertex(pt, type);
+            }
+        }
+
+        // Create edges. Points are jittered for more randomness.
+        // TODO how to bias direct paths more?
+        PriorityQueue<Edge> edges = new PriorityQueue<>();
+        Random random = new Random(this.seed + x + z);
+
+        ///  Horizontal Edges (normal edges)
+        for (int jz = 0; jz < DETAIL; jz++) {
+            // skip connecting anything along the ocean
+            if (jz == 0 && east.type == 0) continue;
+            if (jz == DETAIL - 1 && west.type == 0) continue;
+
+            for (int ix = 0; ix < DETAIL - 1; ix++) {
+                // skip connecting anything along the ocean
+                if (ix == 0 && north.type == 0) continue;
+                if (ix == DETAIL - 2 && south.type == 0) continue;
+
+                // skip corners that aren't (0,0)
+                Vertex v = vertices[ix][jz]; // could only be left corner
+                Vertex v1 = vertices[ix + 1][jz]; // could only be right corner
+
+                if (v.type == Type.CORNER && jz != 0) {
+                    continue;
+                }
+                if (v1.type == Type.CORNER) {
+                    continue;
+                }
+
+                // for far edges, check who owns the vertices
+                if (v.type == Type.EDGE) {
+
+                }
+
+                edges.add(new Edge(v.point, v1.point, random.nextDouble()));
+            }
+        }
+
+        //List<Edge> connected1 = new
+
+
+    }
 
     @Override
     protected double sampleHeight(double x, double z) {
@@ -174,7 +255,7 @@ public class Earth extends WorldGen {
         }
 
         public RegionInfo riverInfo(int x, int z) {
-            return this.earth.kruskal2Cache.sample(x, z);
+            return this.earth.flow2cache.sample(x, z);
         }
     }
 }
