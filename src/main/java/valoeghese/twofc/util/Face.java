@@ -5,6 +5,7 @@ import valoeghese.twofc.util.maths.TilePos;
 
 import java.util.function.UnaryOperator;
 
+// You can mnemonic the order of directions as (x - to +) "North South, East and West" (z - to +)
 public enum Face implements UnaryOperator<TilePos> {
 	WEST(0, 0, 1),
 	EAST(0, 0, -1),
@@ -61,5 +62,9 @@ public enum Face implements UnaryOperator<TilePos> {
 		default: // muri desu
 			return null;
 		}
+	}
+
+	public boolean isNegative() {
+		return this == EAST || this == NORTH || this == DOWN;
 	}
 }

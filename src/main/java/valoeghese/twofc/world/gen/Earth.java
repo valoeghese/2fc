@@ -17,10 +17,12 @@ public class Earth extends WorldGen {
     public Earth(long seed) {
         super(seed);
         this.seed = seed;
+        this.jgSeed = (int)(this.seed & 0xFFFFFFFFL);
         this.noise = new Noise(new Random(seed));
     }
 
     private final long seed;
+    private final int jgSeed;
     private final Noise noise;
     private double sampleNoise(double x, double z) {
         return this.noise.sample(x, z);
@@ -58,7 +60,7 @@ public class Earth extends WorldGen {
         int south = rootRegionType(x + 1, z);
 
         if (east == 0 || north == 0 || west == 0 || south == 0) {
-            int hash = Voronoi.random2(x, z, (int)(this.seed & 0xFFFFFFFFL), -1);
+            int hash = Voronoi.random2(x, z, this.jgSeed, -1);
             int type = (hash & 1) == 0 ? 2 : 1;
             // pick outflows
             List<Face> options = new ArrayList<>();
@@ -119,7 +121,7 @@ public class Earth extends WorldGen {
             return regionType;
         }
 
-        Random random = new Random(Voronoi.random2(x, z, (int)(this.seed & 0xFFFFFFFFL) + offset, -1));
+        Random random = new Random(Voronoi.random2(x, z, this.jgSeed + offset, -1));
         random.nextInt();
         Face selected = options.get(random.nextInt(options.size()));
 
@@ -132,7 +134,127 @@ public class Earth extends WorldGen {
     private final FastObjCache64<RegionInfo> flow1cache = new FastObjCache64<>((x, z) -> flow(x, z, 1, 0.6f, this.regionTypeCache));
     private final FastObjCache64<RegionInfo> flow2cache = new FastObjCache64<>((x, z) -> flow(x, z, 2, 1.0f, this.flow1cache));
 
+    private record Vertex(Vec2f point, Type type, boolean inSquare, List<GraphEdge> edges, AtomicBoolean taken) {
+        Vertex(Vec2f point, Type type, boolean inSquare) {
+            this(point, type, inSquare, new ArrayList<>(), new AtomicBoolean(false));
+        }
+
+        // makes code nicer
+        enum Type {
+            CENTRAL,
+            EDGE,
+            CORNER,
+            OCEAN
+        }
+    }
+    private record GraphEdge(Vertex from, Vertex to, double weight) implements Comparable<GraphEdge> {
+        @Override
+        public int compareTo(GraphEdge edge) {
+            return Double.compare(weight, edge.weight);
+        }
+
+        RiverEdge seal() {
+            return new RiverEdge(from.point, to.point);
+        }
+    }
+
     public record RiverEdge(Vec2f flowFrom, Vec2f flowTo) {
+    }
+
+    private static final class RiverGen {
+        RiverGen(Vertex vertex, Random random) {
+            this.origin = vertex.point;
+            vertex.taken.set(true);
+
+            int length = getSuitableConnections(options, vertex);
+            if (length > 0) {
+                GraphEdge selected = options[random.nextInt(length)];
+                this.add(selected);
+            } else {
+                // for now, shouldn't happen with current algorithm.
+                throw new IllegalStateException("No possible vertex connection from vertex " + vertex);
+            }
+        }
+
+        // Weight to bias direction away from source over randomness
+        static final double fanWeight = 0.5;
+
+        final Vec2f origin;
+        final GraphEdge[] options = new GraphEdge[4];
+        PriorityQueue<GraphEdge> toVisit = new PriorityQueue<>();
+        List<RiverEdge> added = new ArrayList<>();
+
+        int getSuitableConnections(GraphEdge[] edges, Vertex vertex) {
+            int i = 0;
+            for (GraphEdge edge : vertex.edges) {
+                Vertex flowTo = vertex;
+                Vertex flowFrom = edge.from == vertex ? edge.to : edge.from;
+
+                // corners already filtered out if not good
+                if (flowFrom.type == Vertex.Type.OCEAN) {
+                    continue;
+                }
+                if (!flowFrom.inSquare) {
+                    continue;
+                }
+                // this will need to be checked after remove from priority queue too.
+                if (flowFrom.taken.get()) {
+                    continue;
+                }
+
+                // Bias the weight and sort connection: create new edge copy.
+                double oldSqrDist = origin.squaredDist(flowTo.point);
+                double newSqrDist = origin.squaredDist(flowFrom.point);
+                double newWeight = edge.weight - fanWeight * (newSqrDist - oldSqrDist);
+
+                edges[i++] = new GraphEdge(flowFrom, flowTo, newWeight);
+            }
+
+            return i; // length
+        }
+
+        /**
+         * Add the edge to this RiverGen and mark new edges to visit.
+         * @param edge the edge added. Should be adjusted to flow FROM the higher elevation TO lower elevation, with
+         *             the new weight.
+         */
+        void add(GraphEdge edge) {
+            edge.from.taken.set(true);
+
+            // Add new options to priority queue
+            int length = getSuitableConnections(options, edge.from);
+            for (int i = 0; i < length; i++) {
+                toVisit.add(options[i]);
+            }
+        }
+
+        static final int MASK = 3;
+
+        static RiverGen create(Face outflow, int x, int z, int voronoiSeed, Vertex[][] vertices, Random random) {
+            int xSample = outflow.isNegative() && outflow.getX() != 0 ? x - 1 : x;
+            int zSample = outflow.isNegative() && outflow.getZ() != 0 ? z - 1 : z;
+
+            int randomOffset = Voronoi.random2(xSample, zSample, voronoiSeed, MASK);
+            Vertex vertex;
+            switch (outflow) {
+                case NORTH:
+                    vertex = vertices[0][1 + randomOffset];
+                    break;
+                case SOUTH:
+                    vertex = vertices[vertices.length - 1][1 + randomOffset];
+                    break;
+                case EAST:
+                    vertex = vertices[1 + randomOffset][0];
+                    break;
+                case WEST:
+                    vertex = vertices[1 + randomOffset][vertices.length - 1];
+                    break;
+                default:
+                    throw new IllegalArgumentException("Invalid outflow face " + outflow);
+            }
+
+            return new RiverGen(vertex, random);
+        }
     }
 
     private void createRivers(int x, int z) {
@@ -151,32 +273,9 @@ public class Earth extends WorldGen {
         RegionInfo west = cache.sample(x, z + 1);
 
         // Create vertices
+        // mask to pick edge positions, not corners
+        final int DETAIL = RiverGen.MASK + 1 + 2;
 
-        // makes code nicer
-        enum Type {
-            CENTRAL,
-            EDGE,
-            CORNER,
-            OCEAN
-        }
-        interface E {}
-        record Vertex(Vec2f point, Type type, boolean inSquare, List<E> edges, AtomicBoolean taken) {
-            Vertex(Vec2f point, Type type, boolean inSquare) {
-                this(point, type, inSquare, new ArrayList<>(), new AtomicBoolean(false));
-            }
-        }
-        record GraphEdge(Vertex from, Vertex to, double weight) implements E, Comparable<GraphEdge> {
-            @Override
-            public int compareTo(GraphEdge edge) {
-                return Double.compare(weight, edge.weight);
-            }
-
-            RiverEdge seal() {
-                return new RiverEdge(from.point, to.point);
-            }
-        }
-
-        final int DETAIL = 4;
         Vertex[][] vertices = new Vertex[DETAIL][DETAIL];
 
         // other side overlapping with neighbour's start
@@ -191,12 +290,12 @@ public class Earth extends WorldGen {
                 boolean edgeZ = j == 0 || j == DETAIL - 1;
                 boolean isOceanZ = j == 0 && east.type == 0 || j == DETAIL - 1 && west.type == 0;
 
-                Vec2f pt = Voronoi.sampleVoronoiGrid(innerX, innerZ, (int)(this.seed & 0xFFFFFFFFL) + 123, 0.3f);
-                Type type = (isOceanX || isOceanZ) ? Type.OCEAN : (
-                        edgeZ && edgeX ? Type.CORNER : (edgeZ || edgeX) ? Type.EDGE : Type.CENTRAL
+                Vec2f pt = Voronoi.sampleVoronoiGrid(innerX, innerZ, this.jgSeed + 123, 0.3f);
+                Vertex.Type type = (isOceanX || isOceanZ) ? Vertex.Type.OCEAN : (
+                        edgeZ && edgeX ? Vertex.Type.CORNER : (edgeZ || edgeX) ? Vertex.Type.EDGE : Vertex.Type.CENTRAL
                 );
                 boolean edgeOwner;
-                if (type == Type.EDGE) {
+                if (type == Vertex.Type.EDGE) {
                     if (i == 0) {
                         edgeOwner = (pt.id() & 1) == 0;
                     } else if (i == DETAIL - 1) {
@@ -226,10 +325,10 @@ public class Earth extends WorldGen {
                 Vertex v = vertices[ix][jz]; // could only be left corner
                 Vertex v1 = vertices[ix + 1][jz]; // could only be right corner
 
-                if (v.type == Type.CORNER && jz != 0) {
+                if (v.type == Vertex.Type.CORNER && jz != 0) {
                     continue;
                 }
-                if (v1.type == Type.CORNER) {
+                if (v1.type == Vertex.Type.CORNER) {
                     continue;
                 }
 
@@ -247,10 +346,10 @@ public class Earth extends WorldGen {
                 Vertex v = vertices[ix][jz]; // could only be top corner
                 Vertex v1 = vertices[ix][jz + 1]; // could only be bottom corner
 
-                if (v.type == Type.CORNER && ix != 0) {
+                if (v.type == Vertex.Type.CORNER && ix != 0) {
                     continue;
                 }
-                if (v1.type == Type.CORNER) {
+                if (v1.type == Vertex.Type.CORNER) {
                     continue;
                 }
 
@@ -264,80 +363,14 @@ public class Earth extends WorldGen {
 
         // Start at outflow and work way in using kruskal. Outflows cannot merge.
         // Edge weights will be additionally biased by direction away from source.
-        final double fanWeight = 0.5;
 
-        class RiverGen {
-            RiverGen(Vertex vertex, Random random) {
-                this.origin = vertex.point;
-                vertex.taken.set(true);
-
-                int length = getSuitableConnections(options, vertex);
-                if (length > 0) {
-                    GraphEdge selected = options[random.nextInt(length)];
-                    this.add(selected);
-                } else {
-                    // for now, shouldn't happen with current algorithm.
-                    throw new IllegalStateException("No possible vertex connection from vertex " + vertex);
-                }
-            }
-
-            final Vec2f origin;
-            final GraphEdge[] options = new GraphEdge[4];
-            PriorityQueue<GraphEdge> toVisit = new PriorityQueue<>();
-            List<RiverEdge> added = new ArrayList<>();
-
-            int getSuitableConnections(GraphEdge[] edges, Vertex vertex) {
-                int i = 0;
-                for (E e : vertex.edges) {
-                    GraphEdge edge = (GraphEdge) e;
-                    Vertex flowTo = vertex;
-                    Vertex flowFrom = edge.from == vertex ? edge.to : edge.from;
-
-                    // corners already filtered out if not good
-                    if (flowFrom.type == Type.OCEAN) {
-                        continue;
-                    }
-                    if (!flowFrom.inSquare) {
-                        continue;
-                    }
-                    // this will need to be checked after remove from priority queue too.
-                    if (flowFrom.taken.get()) {
-                        continue;
-                    }
-
-                    // Bias the weight and sort connection: create new edge copy.
-                    double oldSqrDist = origin.squaredDist(flowTo.point);
-                    double newSqrDist = origin.squaredDist(flowFrom.point);
-                    double newWeight = edge.weight - fanWeight * (newSqrDist - oldSqrDist);
-
-                    edges[i++] = new GraphEdge(flowFrom, flowTo, newWeight);
-                }
-
-                return i; // length
-            }
-
-            /**
-             * Add the edge to this RiverGen and mark new edges to visit.
-             * @param edge the edge added. Should be adjusted to flow FROM the higher elevation TO lower elevation, with
-             *             the new weight.
-             */
-            void add(GraphEdge edge) {
-                edge.from.taken.set(true);
-
-                // Add new options to priority queue
-                int length = getSuitableConnections(options, edge.from);
-                for (int i = 0; i < length; i++) {
-                    toVisit.add(options[i]);
-                }
-            }
-        }
-
-        // FIXME implement this
+        // Pick positions for the outflows of this region
         RiverGen[] gen = new RiverGen[region.outflow2 == null ? 1 : 2];
-        gen[0] = new RiverGen(null, null);
+
+        gen[0] = RiverGen.create(region.outflow1, x, z, this.jgSeed, vertices, random);
 
         if (gen.length > 1) {
-            gen[1] = new RiverGen(null, null);
+            gen[1] = RiverGen.create(region.outflow2, x, z, this.jgSeed + 321, vertices, random);
         }
         // -----
 
