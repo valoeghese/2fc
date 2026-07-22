@@ -39,8 +39,10 @@ public class RiversConnectionTest extends PanelTest {
 		int lz = Math.floorMod(z, 3) - 1;
 		float hue = region.type() == 2 ? floodplainHue : mountainsHue;
 		float b = 0.8f;
+		float sat = region.type() == 1 ? 0.4f : 1.0f;
 
 		float riverB = region.outflow1() == region.outflow2() ? 0.5f : 0.96f;
+		float riverSat = 1.0f;
 
 		int ox1 = region.outflow1() == null ? 7 : region.outflow1().getX();
 		int oz1 = region.outflow1() == null ? 7 : region.outflow1().getZ();
@@ -52,6 +54,7 @@ public class RiversConnectionTest extends PanelTest {
 		if ((lx == ox1 && lz == oz1) || (lx == ox2 && lz == oz2) || (lx == 0 && lz == 0 && region.outflow1() != null)) {
 			hue = waterHue;
 			b = riverB;
+			sat = riverSat;
 		}
 		// note: only regions with 2 outflows are coastal (point to water), so N/E/S/W regions will not have outflow2 point to this region
 		if (showInflow && hue != waterHue) {
@@ -60,6 +63,7 @@ public class RiversConnectionTest extends PanelTest {
 				if (regionN.outflow1() == Face.SOUTH) {
 					hue = waterHue;
 					b = 0.96f;
+					sat = riverSat;
 				}
 			}
 			else if (lx == 1 && lz == 0) { // south
@@ -67,6 +71,7 @@ public class RiversConnectionTest extends PanelTest {
 				if (regionS.outflow1() == Face.NORTH) {
 					hue = waterHue;
 					b = 0.96f;
+					sat = riverSat;
 				}
 			}
 			else if (lx == 0 && lz == -1) { // east
@@ -74,6 +79,7 @@ public class RiversConnectionTest extends PanelTest {
 				if (regionE.outflow1() == Face.WEST) {
 					hue = waterHue;
 					b = 0.96f;
+					sat = riverSat;
 				}
 			}
 			else if (lx == 0 && lz == 1) { // west
@@ -81,10 +87,11 @@ public class RiversConnectionTest extends PanelTest {
 				if (regionW.outflow1() == Face.EAST) {
 					hue = waterHue;
 					b = 0.96f;
+					sat = riverSat;
 				}
 			}
 		}
 
-		return Color.getHSBColor(hue, 1.0f, b).getRGB();
+		return Color.getHSBColor(hue, sat, b).getRGB();
 	}
 }

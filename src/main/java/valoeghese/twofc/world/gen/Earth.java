@@ -43,8 +43,19 @@ public class Earth extends WorldGen {
     }
 
     // Public for debug
-    // (terrain) type: 0 = ocean, 1 = mountains, 2 = floodplains
+    // (terrain) type: 0 = ocean, 1 = mountains, 2 = floodplains, 3 = (coastal) mountains
     public record RegionInfo(int type, @Nullable Face outflow1, @Nullable Face outflow2) {
+        public static final int OCEAN = 0;
+        public static final int MOUNTAINS = 1;
+        public static final int FLOODPLAIN = 2;
+        public static final int COASTAL_MOUNTAINS = 3;
+
+        public static boolean isMountains(int type) {
+            return (type & 1) == 1;
+        }
+        public static boolean isCoastal(int type) {
+            return (type & 2) == 2;
+        }
     }
 
     private RegionInfo regionType(int x, int z) {
@@ -61,7 +72,7 @@ public class Earth extends WorldGen {
 
         if (east == 0 || north == 0 || west == 0 || south == 0) {
             int hash = Voronoi.random2(x, z, this.jgSeed, -1);
-            int type = (hash & 1) == 0 ? 2 : 1;
+            int type = (hash & 1) == 0 ? 2 : 3;
             // pick outflows
             List<Face> options = new ArrayList<>();
             if (east == 0) options.add(Face.EAST);
@@ -87,10 +98,11 @@ public class Earth extends WorldGen {
     }
     private final FastObjCache64<RegionInfo> regionTypeCache = new FastObjCache64<>(this::regionType);
 
-    private RegionInfo flow(int x, int z, int offset, float chance, FastObjCache64<RegionInfo> cache) {
+    private RegionInfo farFlow(int x, int z, int offset, float chance, FastObjCache64<RegionInfo> cache) {
         RegionInfo regionType = cache.sample(x, z);
 
-        if (regionType.type != 1 || regionType.outflow1 != null) {
+        // we have already done coastal and anything with outflow1. also skip ocean
+        if (regionType.type != RegionInfo.MOUNTAINS || regionType.outflow1 != null) {
             return regionType;
         }
 
@@ -102,19 +114,19 @@ public class Earth extends WorldGen {
         List<Face> options = new ArrayList<>();
         if (north.outflow1 != null) {
             options.add(Face.NORTH);
-            if (north.type == 2) options.add(Face.NORTH);
+            if (north.type == RegionInfo.FLOODPLAIN) options.add(Face.NORTH);
         }
         if (east.outflow1 != null) {
             options.add(Face.EAST);
-            if (east.type == 2) options.add(Face.EAST);
+            if (east.type == RegionInfo.FLOODPLAIN) options.add(Face.EAST);
         }
         if (south.outflow1 != null) {
             options.add(Face.SOUTH);
-            if (south.type == 2) options.add(Face.SOUTH);
+            if (south.type == RegionInfo.FLOODPLAIN) options.add(Face.SOUTH);
         }
         if (west.outflow1 != null) {
             options.add(Face.WEST);
-            if (west.type == 2) options.add(Face.WEST);
+            if (west.type == RegionInfo.FLOODPLAIN) options.add(Face.WEST);
         }
 
         if (options.isEmpty()) {
@@ -131,8 +143,8 @@ public class Earth extends WorldGen {
 
         return new RegionInfo(regionType.type, selected, null);
     }
-    private final FastObjCache64<RegionInfo> flow1cache = new FastObjCache64<>((x, z) -> flow(x, z, 1, 0.6f, this.regionTypeCache));
-    private final FastObjCache64<RegionInfo> flow2cache = new FastObjCache64<>((x, z) -> flow(x, z, 2, 1.0f, this.flow1cache));
+    private final FastObjCache64<RegionInfo> flow1cache = new FastObjCache64<>((x, z) -> farFlow(x, z, 1, 0.6f, this.regionTypeCache));
+    private final FastObjCache64<RegionInfo> flow2cache = new FastObjCache64<>((x, z) -> farFlow(x, z, 2, 1.0f, this.flow1cache));
 
     private record Vertex(Vec2f point, Type type, boolean inSquare, List<GraphEdge> edges, AtomicBoolean taken) {
         Vertex(Vec2f point, Type type, boolean inSquare) {
@@ -253,6 +265,28 @@ public class Earth extends WorldGen {
                     throw new IllegalArgumentException("Invalid outflow face " + outflow);
             }
 
+            // already selected
+            if (vertex.taken.get()) {
+                randomOffset = (randomOffset + (MASK - 1)) & MASK;
+
+                switch (outflow) {
+                    case NORTH:
+                        vertex = vertices[0][1 + randomOffset];
+                        break;
+                    case SOUTH:
+                        vertex = vertices[vertices.length - 1][1 + randomOffset];
+                        break;
+                    case EAST:
+                        vertex = vertices[1 + randomOffset][0];
+                        break;
+                    case WEST:
+                        vertex = vertices[1 + randomOffset][vertices.length - 1];
+                        break;
+                    default:
+                        throw new IllegalArgumentException("Invalid outflow face " + outflow);
+                }
+            }
+
             return new RiverGen(vertex, random);
         }
     }
@@ -283,12 +317,12 @@ public class Earth extends WorldGen {
         for (int i = 0; i < DETAIL; i++) {
             int innerX = x * (DETAIL - 1) + i;
             boolean edgeX = i == 0 || i == DETAIL - 1;
-            boolean isOceanX = i == 0 && north.type == 0 || i == DETAIL - 1 && south.type == 0;
+            boolean isOceanX = i == 0 && north.type == RegionInfo.OCEAN || i == DETAIL - 1 && south.type == RegionInfo.OCEAN;
 
             for (int j = 0; j < DETAIL; j++) {
                 int innerZ = z * (DETAIL - 1) + j;
                 boolean edgeZ = j == 0 || j == DETAIL - 1;
-                boolean isOceanZ = j == 0 && east.type == 0 || j == DETAIL - 1 && west.type == 0;
+                boolean isOceanZ = j == 0 && east.type == RegionInfo.OCEAN || j == DETAIL - 1 && west.type == RegionInfo.OCEAN;
 
                 Vec2f pt = Voronoi.sampleVoronoiGrid(innerX, innerZ, this.jgSeed + 123, 0.3f);
                 Vertex.Type type = (isOceanX || isOceanZ) ? Vertex.Type.OCEAN : (
@@ -372,6 +406,7 @@ public class Earth extends WorldGen {
         if (gen.length > 1) {
             gen[1] = RiverGen.create(region.outflow2, x, z, this.jgSeed + 321, vertices, random);
         }
+
         // -----
 
         boolean stillGoing;
