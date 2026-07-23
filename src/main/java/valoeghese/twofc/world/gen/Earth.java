@@ -110,13 +110,20 @@ public class Earth extends WorldGen {
             selected = options.get(random.nextInt(options.size()));
             selected2 = options.get(random.nextInt(options.size()));
         } else {
+            // allow assumptions that only selected1 can flow into a land mass to survive.
+            selected2 = options.remove(random.nextInt(options.size()));
+
             if (east == RegionInfo.FLOODPLAIN) options.add(Face.EAST);
             if (north == RegionInfo.FLOODPLAIN) options.add(Face.NORTH);
             if (west == RegionInfo.FLOODPLAIN) options.add(Face.WEST);
             if (south == RegionInfo.FLOODPLAIN) options.add(Face.SOUTH);
 
-            selected = options.remove(random.nextInt(options.size()));
-            selected2 = options.isEmpty() ? null : options.get(random.nextInt(options.size()));
+            selected = options.isEmpty() ? null : options.get(random.nextInt(options.size()));
+
+            if (selected == null) {
+                selected = selected2;
+                selected2 = null;
+            }
         }
 
         return new RegionInfo(centre.type, selected, selected2);
