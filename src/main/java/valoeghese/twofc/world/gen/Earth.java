@@ -70,33 +70,58 @@ public class Earth extends WorldGen {
         int west = rootRegionType(x, z + 1);
         int south = rootRegionType(x + 1, z);
 
+        // RegionInfo.OCEAN == 0
         if (east == 0 || north == 0 || west == 0 || south == 0) {
-            int hash = Voronoi.random2(x, z, this.jgSeed, -1);
-            int type = (hash & 1) == 0 ? 2 : 3;
-            // pick outflows
-            List<Face> options = new ArrayList<>();
-            if (east == 0) options.add(Face.EAST);
-            if (north == 0) options.add(Face.NORTH);
-            if (west == 0) options.add(Face.WEST);
-            if (south == 0) options.add(Face.SOUTH);
-            Random random = new Random(hash);
+            int hash = Voronoi.random2(x, z, this.jgSeed, 1);
+            int type = hash == 0 ? RegionInfo.FLOODPLAIN : RegionInfo.COASTAL_MOUNTAINS;
 
-            Face selected;
-            Face selected2;
-            if (type == 2) {
-                selected = options.get(random.nextInt(options.size()));
-                selected2 = options.get(random.nextInt(options.size()));
-            } else {
-                selected = options.remove(random.nextInt(options.size()));
-                selected2 = options.isEmpty() ? null : options.get(random.nextInt(options.size()));
-            }
-
-            return new RegionInfo(type, selected, selected2);
+            return new RegionInfo(type, null, null);
         } else {
             return new RegionInfo(1, null, null);
         }
     }
-    private final FastObjCache64<RegionInfo> regionTypeCache = new FastObjCache64<>(this::regionType);
+    private final FastObjCache64<RegionInfo> regionTypeWithoutFlowsCache = new FastObjCache64<>(this::regionType);
+
+    private RegionInfo regionTypeWithFlows(int x, int z) {
+        RegionInfo centre = regionTypeWithoutFlowsCache.sample(x, z);
+
+        if (!RegionInfo.isCoastal(centre.type)) {
+            return centre;
+        }
+
+        // pick outflows
+        int east = regionTypeWithoutFlowsCache.sample(x, z - 1).type;
+        int north = regionTypeWithoutFlowsCache.sample(x - 1, z).type;
+        int west = regionTypeWithoutFlowsCache.sample(x, z + 1).type;
+        int south = regionTypeWithoutFlowsCache.sample(x + 1, z).type;
+
+        List<Face> options = new ArrayList<>();
+        if (east == RegionInfo.OCEAN) options.add(Face.EAST);
+        if (north == RegionInfo.OCEAN) options.add(Face.NORTH);
+        if (west == RegionInfo.OCEAN) options.add(Face.WEST);
+        if (south == RegionInfo.OCEAN) options.add(Face.SOUTH);
+
+        int hash = Voronoi.random2(x, z, this.jgSeed, -1);
+        Random random = new Random(hash);
+
+        Face selected;
+        Face selected2;
+        if (centre.type == RegionInfo.FLOODPLAIN) {
+            selected = options.get(random.nextInt(options.size()));
+            selected2 = options.get(random.nextInt(options.size()));
+        } else {
+            if (east == RegionInfo.FLOODPLAIN) options.add(Face.EAST);
+            if (north == RegionInfo.FLOODPLAIN) options.add(Face.NORTH);
+            if (west == RegionInfo.FLOODPLAIN) options.add(Face.WEST);
+            if (south == RegionInfo.FLOODPLAIN) options.add(Face.SOUTH);
+
+            selected = options.remove(random.nextInt(options.size()));
+            selected2 = options.isEmpty() ? null : options.get(random.nextInt(options.size()));
+        }
+
+        return new RegionInfo(centre.type, selected, selected2);
+    }
+    private final FastObjCache64<RegionInfo> regionTypeCache = new FastObjCache64<>(this::regionTypeWithFlows);
 
     private RegionInfo farFlow(int x, int z, int offset, float chance, FastObjCache64<RegionInfo> cache) {
         RegionInfo regionType = cache.sample(x, z);
@@ -190,6 +215,7 @@ public class Earth extends WorldGen {
 
         // Weight to bias direction away from source over randomness
         static final double fanWeight = 0.5;
+//        static final double continueWeight; // using previous edge, bias away looping, a sort of counter to fanWeight
 
         final Vec2f origin;
         final GraphEdge[] options = new GraphEdge[4];

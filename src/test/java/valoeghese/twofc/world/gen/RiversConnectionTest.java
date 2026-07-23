@@ -62,7 +62,7 @@ public class RiversConnectionTest extends PanelTest {
 				Earth.RegionInfo regionN = worldGen.riverInfo(rx - 1, rz);
 				if (regionN.outflow1() == Face.SOUTH) {
 					hue = waterHue;
-					b = 0.96f;
+					b = 0.1f;//0.96f;
 					sat = riverSat;
 				}
 			}
@@ -70,7 +70,7 @@ public class RiversConnectionTest extends PanelTest {
 				Earth.RegionInfo regionS = worldGen.riverInfo(rx + 1, rz);
 				if (regionS.outflow1() == Face.NORTH) {
 					hue = waterHue;
-					b = 0.96f;
+					b = 0.1f;//0.96f;
 					sat = riverSat;
 				}
 			}
@@ -78,7 +78,7 @@ public class RiversConnectionTest extends PanelTest {
 				Earth.RegionInfo regionE = worldGen.riverInfo(rx, rz - 1);
 				if (regionE.outflow1() == Face.WEST) {
 					hue = waterHue;
-					b = 0.96f;
+					b = 0.1f;//0.96f;
 					sat = riverSat;
 				}
 			}
@@ -86,7 +86,7 @@ public class RiversConnectionTest extends PanelTest {
 				Earth.RegionInfo regionW = worldGen.riverInfo(rx, rz + 1);
 				if (regionW.outflow1() == Face.EAST) {
 					hue = waterHue;
-					b = 0.96f;
+					b = 0.1f;//0.96f;
 					sat = riverSat;
 				}
 			}
