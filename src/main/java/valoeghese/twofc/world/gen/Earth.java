@@ -2,6 +2,7 @@ package valoeghese.twofc.world.gen;
 
 import valoeghese.twofc.util.Face;
 import valoeghese.twofc.util.FastObjCache64;
+import valoeghese.twofc.util.maths.MathsUtils;
 import valoeghese.twofc.util.maths.Vec2f;
 import valoeghese.twofc.util.noise.Noise;
 import valoeghese.twofc.world.kingdom.Voronoi;
@@ -58,7 +59,7 @@ public class Earth extends WorldGen {
         }
     }
 
-    private RegionInfo regionType(int x, int z) {
+    private RegionInfo regionInfo(int x, int z) {
         int centre = rootRegionType(x, z);
         if (centre == 0) {
             return new RegionInfo(0, null, null);
@@ -80,7 +81,7 @@ public class Earth extends WorldGen {
             return new RegionInfo(1, null, null);
         }
     }
-    private final FastObjCache64<RegionInfo> regionTypeWithoutFlowsCache = new FastObjCache64<>(this::regionType);
+    private final FastObjCache64<RegionInfo> regionTypeWithoutFlowsCache = new FastObjCache64<>(this::regionInfo);
 
     private RegionInfo regionTypeWithFlows(int x, int z) {
         RegionInfo centre = regionTypeWithoutFlowsCache.sample(x, z);
@@ -129,6 +130,58 @@ public class Earth extends WorldGen {
         return new RegionInfo(centre.type, selected, selected2);
     }
     private final FastObjCache64<RegionInfo> regionTypeCache = new FastObjCache64<>(this::regionTypeWithFlows);
+
+    private RegionInfo voronoiZoom(final int x, final int z, float zoom, FastObjCache64<RegionInfo> cache) {
+        Vec2f centre = Voronoi.sampleVoronoi((float) x / zoom, (float)z / zoom, (int)(seed & (long)0xFFFFFFFF), 0.2f);
+        return cache.sample(MathsUtils.floor(centre.getX()), MathsUtils.floor(centre.getY()));
+    }
+
+    private RegionInfo zoom(final int x, final int z, FastObjCache64.Sampler<RegionInfo> cache) {
+        int upX = x >> 1;
+        int upZ = z >> 1;
+
+        RegionInfo minusXZ = cache.sample(upX, upZ);
+
+        if (upX << 1 == x) {
+            if (upZ << 1 == z) {
+                return minusXZ;
+            } else { // only z is advanced
+                RegionInfo plusZ = cache.sample(upX, upZ + 1);
+                return Voronoi.random2(x, z, this.jgSeed - 123, 1) == 1 ? plusZ : minusXZ;
+            }
+        } else {
+            if (upZ << 1 == z) { // only x is advanced
+                RegionInfo plusX = cache.sample(upX + 1, upZ);
+                return Voronoi.random2(x, z, this.jgSeed - 123, 1) == 1 ? plusX : minusXZ;
+            } else {
+                RegionInfo plusZ = cache.sample(upX, upZ + 1);
+                RegionInfo plusX = cache.sample(upX + 1, upZ);
+                RegionInfo plusXZ = cache.sample(upX + 1, upZ + 1);
+
+//                RegionInfo plusXEdge = Voronoi.random2(x, z - 1, this.jgSeed - 123, 1) == 1 ? plusX : minusXZ;
+//                RegionInfo plusZEdge = Voronoi.random2(x - 1, z, this.jgSeed - 123, 1) == 1 ? plusZ : minusXZ;
+//                RegionInfo advancedPlusXEdge = Voronoi.random2(x, z + 1, this.jgSeed - 123, 1) == 1 ? plusXZ : plusZ;
+//                RegionInfo advancedPlusZEdge = Voronoi.random2(x + 1, z, this.jgSeed - 123, 1) == 1 ? plusXZ : plusX;
+
+                return switch(Voronoi.random2(x, z, this.jgSeed - 123, 3)) {
+                    case 0 -> Voronoi.random2(x, z - 1, this.jgSeed - 123, 1) == 1 ? plusX : minusXZ; // plusXEdge (relative to minusXZ)
+                    case 1 -> Voronoi.random2(x - 1, z, this.jgSeed - 123, 1) == 1 ? plusZ : minusXZ; // plusZEdge
+                    case 2 -> Voronoi.random2(x, z + 1, this.jgSeed - 123, 1) == 1 ? plusXZ : plusZ; // advancedPlusXEdge (plusXEdge relative to plusZ)
+                    default -> Voronoi.random2(x + 1, z, this.jgSeed - 123, 1) == 1 ? plusXZ : plusX; // advancedPlusZEdge
+                };
+            }
+        }
+    }
+    // Root: 16 block size
+    // + zoom = 64 block size
+    private FastObjCache64<RegionInfo> coastline1 = new FastObjCache64<>((x, z) -> zoom(x, z, (x_, z_) -> voronoiZoom(x_, z_, 16, this.regionTypeCache)));
+    // + zoom = 128 block size
+    private FastObjCache64<RegionInfo> coastline2 = new FastObjCache64<>((x, z) -> zoom(x, z, this.coastline1::sample));
+    // + final voronoi (x8) = 1024 block size
+
+    public RegionInfo sampleRegionByBlock(int x, int z) {
+        return voronoiZoom(x, z, 16, this.coastline2);
+    }
 
     private RegionInfo farFlow(int x, int z, int offset, float chance, FastObjCache64<RegionInfo> cache) {
         RegionInfo regionType = cache.sample(x, z);
@@ -499,11 +552,15 @@ public class Earth extends WorldGen {
         // Exposed methods for debug
 
         public int regionType(int x, int z) {
-            return this.earth.regionType(x, z).type;
+            return this.earth.regionInfo(x, z).type;
         }
 
         public RegionInfo riverInfo(int x, int z) {
             return this.earth.flow2cache.sample(x, z);
+        }
+
+        public int regionTypeCoastline(int x, int z) {
+            return this.earth.sampleRegionByBlock(x, z).type;
         }
     }
 }

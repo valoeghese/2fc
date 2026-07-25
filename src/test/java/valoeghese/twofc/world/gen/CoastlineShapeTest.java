@@ -10,9 +10,9 @@ import java.awt.*;
 /**
  * Displays a heightmap of a world where 1 pixel = 4 blocks (not average, picks instead the first in the block selection)
  */
-public class IslandsShapeTest extends PanelTest {
+public class CoastlineShapeTest extends PanelTest {
 	public static void main(String[] args) {
-		new IslandsShapeTest().scale(2).start();
+		new CoastlineShapeTest().maxScale(64).scale(16).start();
 	}
 
 	static long seed = 1;//new Random().nextLong();
@@ -20,8 +20,7 @@ public class IslandsShapeTest extends PanelTest {
 
 	@Override
 	protected int getColour(int x, int z) {
-		Vec2f centre = Voronoi.sampleVoronoi((float) x / 32, (float)z / 32, (int)(seed & 0xFFFFFFFFL), 0.2f);
-		int region = worldGen.regionType(MathsUtils.floor(centre.getX()), MathsUtils.floor(centre.getY()));
+		int region = worldGen.regionTypeCoastline(x, z);
 		return Color.getHSBColor(region == 2 ? 0.55f : Earth.RegionInfo.isMountains(region) ? 0.4f : 0.7f, region == 1 ? 0.4f : 1.0f, 0.8f).getRGB();
 	}
 }

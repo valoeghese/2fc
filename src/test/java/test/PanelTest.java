@@ -25,8 +25,14 @@ public abstract class PanelTest extends JPanel {
 		return this;
 	}
 
+	public PanelTest maxScale(int scale) {
+		this.maxScale = scale;
+		return this;
+	}
+
 	private int size = 500;
 	private int scale = 4;
+	private int maxScale = 16;
 
 	// drag
 	private Point mousePt;
@@ -68,7 +74,7 @@ public abstract class PanelTest extends JPanel {
 			@Override
 			public void keyTyped(KeyEvent e) {
 				if (e.getKeyChar() == 'z') {
-					if (scale < 16) {
+					if (scale < maxScale) {
 						scale <<= 1;
 						xo = (xo >> 1) - (size >> 2);
 						yo = (yo >> 1) - (size >> 2);
