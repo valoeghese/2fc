@@ -136,6 +136,26 @@ public class Earth extends WorldGen {
         return cache.sample(MathsUtils.floor(centre.getX()), MathsUtils.floor(centre.getY()));
     }
 
+    private RegionInfo downgradeCoast(final int x, final int z, FastObjCache64<RegionInfo> cache) {
+        RegionInfo centre = cache.sample(x, z);
+        if (centre.type == RegionInfo.OCEAN || centre.type == RegionInfo.FLOODPLAIN) {
+            return centre;
+        }
+
+        RegionInfo north = cache.sample(x - 1, z);
+        RegionInfo south = cache.sample(x + 1, z);
+        RegionInfo east = cache.sample(x, z - 1);
+        RegionInfo west = cache.sample(x, z + 1);
+
+        if (north.type == RegionInfo.OCEAN || south.type == RegionInfo.OCEAN
+        || east.type == RegionInfo.OCEAN || west.type == RegionInfo.OCEAN) {
+            int type = centre.type == RegionInfo.MOUNTAINS ? RegionInfo.COASTAL_MOUNTAINS : RegionInfo.FLOODPLAIN;
+            return new RegionInfo(type, centre.outflow1, centre.outflow2);
+        } else {
+            return centre;
+        }
+    }
+
     private RegionInfo zoom(final int x, final int z, FastObjCache64.Sampler<RegionInfo> cache) {
         int upX = x >> 1;
         int upZ = z >> 1;
@@ -175,8 +195,9 @@ public class Earth extends WorldGen {
     // Root: 16 block size
     // + zoom = 64 block size
     private FastObjCache64<RegionInfo> coastline1 = new FastObjCache64<>((x, z) -> zoom(x, z, (x_, z_) -> voronoiZoom(x_, z_, 16, this.regionTypeCache)));
+    private FastObjCache64<RegionInfo> coastline15 = new FastObjCache64<>((x, z) -> downgradeCoast(x, z, this.coastline1));
     // + zoom = 128 block size
-    private FastObjCache64<RegionInfo> coastline2 = new FastObjCache64<>((x, z) -> zoom(x, z, this.coastline1::sample));
+    private FastObjCache64<RegionInfo> coastline2 = new FastObjCache64<>((x, z) -> zoom(x, z, this.coastline15::sample));
     // + final voronoi (x8) = 1024 block size
 
     public RegionInfo sampleRegionByBlock(int x, int z) {
