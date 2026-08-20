@@ -200,6 +200,7 @@ public class Earth extends WorldGen {
     // + zoom = 64 block size
     private FastObjCache64<RegionInfo> coastline2 = new FastObjCache64<>((x, z) -> zoom(x, z, this.coastline15::sample));
     // + final voronoi (x16) = 1024 block size
+    private final int blockRegionSize = 1024;
 
     public RegionInfo sampleRegionByBlock(int x, int z) {
         return voronoiZoom(x, z, 16, this.coastline2);
@@ -253,9 +254,9 @@ public class Earth extends WorldGen {
     private final FastObjCache64<RegionInfo> flow1cache = new FastObjCache64<>((x, z) -> farFlow(x, z, 1, 0.6f, this.regionTypeCache));
     private final FastObjCache64<RegionInfo> flow2cache = new FastObjCache64<>((x, z) -> farFlow(x, z, 2, 1.0f, this.flow1cache));
 
-    private record Vertex(Vec2f point, Type type, boolean inSquare, List<GraphEdge> edges, AtomicBoolean taken) {
-        Vertex(Vec2f point, Type type, boolean inSquare) {
-            this(point, type, inSquare, new ArrayList<>(), new AtomicBoolean(false));
+    private record Vertex(Vec2f point, Type type, int regionType, boolean inSquare, List<GraphEdge> edges, AtomicBoolean taken) {
+        Vertex(Vec2f point, Type type, int regionType, boolean inSquare) {
+            this(point, type, regionType, inSquare, new ArrayList<>(), new AtomicBoolean(false));
         }
 
         // makes code nicer
@@ -296,8 +297,11 @@ public class Earth extends WorldGen {
         }
 
         // Weight to bias direction away from source over randomness
-        static final double fanWeight = 0.5;
-//        static final double continueWeight; // using previous edge, bias away looping, a sort of counter to fanWeight
+        static final double farBias = 0.5;
+        // unimplemented biases
+        static final double straightBias = 0.5; // using previous edge, bias away looping, a sort of counter to farBias
+        static final double spreadBias = 0.5; // bias to promote connecting closer to the origin, another sort of counter for farBias
+        static final double prominenceBias = -10000; // do not go down a grade (perhaps better implemented in the alg)
 
         final Vec2f origin;
         final GraphEdge[] options = new GraphEdge[4];
@@ -332,7 +336,7 @@ public class Earth extends WorldGen {
                 // Bias the weight and sort connection: create new edge copy.
                 double oldSqrDist = origin.squaredDist(flowTo.point);
                 double newSqrDist = origin.squaredDist(flowFrom.point);
-                double newWeight = edge.weight - fanWeight * (newSqrDist - oldSqrDist);
+                double newWeight = edge.weight - farBias * (newSqrDist - oldSqrDist);
 
                 edges[i++] = new GraphEdge(flowFrom, flowTo, newWeight);
             }
@@ -460,7 +464,12 @@ public class Earth extends WorldGen {
                     edgeOwner = true;
                 }
 
-                vertices[i][j] = new Vertex(pt, type, edgeOwner);
+                final float innerToRegionScale = DETAIL - 1;
+                RegionInfo info = this.coastline2.sample(
+                        (int)(innerX / innerToRegionScale * blockRegionSize),
+                        (int)(innerZ / innerToRegionScale * blockRegionSize)
+                );
+                vertices[i][j] = new Vertex(pt, type, info.type, edgeOwner);
             }
         }
 
