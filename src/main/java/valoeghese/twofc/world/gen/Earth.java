@@ -2,6 +2,7 @@ package valoeghese.twofc.world.gen;
 
 import valoeghese.twofc.util.Face;
 import valoeghese.twofc.util.FastObjCache64;
+import valoeghese.twofc.util.Out;
 import valoeghese.twofc.util.maths.MathsUtils;
 import valoeghese.twofc.util.maths.Vec2f;
 import valoeghese.twofc.util.noise.Noise;
@@ -303,7 +304,13 @@ public class Earth extends WorldGen {
         PriorityQueue<GraphEdge> toVisit = new PriorityQueue<>();
         List<RiverEdge> added = new ArrayList<>();
 
-        int getSuitableConnections(GraphEdge[] edges, Vertex vertex) {
+        /**
+         * Generate new graph edges to consider for the MST algorithm.
+         * @param edges the output to store vertices into.
+         * @param vertex the vertex to generate edges from.
+         * @return the number of vertices added to edges.
+         */
+        int getSuitableConnections(@Out GraphEdge[] edges, Vertex vertex) {
             int i = 0;
             for (GraphEdge edge : vertex.edges) {
                 Vertex flowTo = vertex;
@@ -415,6 +422,7 @@ public class Earth extends WorldGen {
 
         // Create vertices
         // mask to pick edge positions, not corners
+        // + 1 because mask->size, +2 for each edge.
         final int DETAIL = RiverGen.MASK + 1 + 2;
 
         Vertex[][] vertices = new Vertex[DETAIL][DETAIL];
