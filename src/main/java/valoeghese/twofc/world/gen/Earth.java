@@ -193,12 +193,12 @@ public class Earth extends WorldGen {
         }
     }
     // Root: 16 block size
-    // + zoom = 64 block size
+    // + zoom = 32 block size
     private FastObjCache64<RegionInfo> coastline1 = new FastObjCache64<>((x, z) -> zoom(x, z, (x_, z_) -> voronoiZoom(x_, z_, 16, this.regionTypeCache)));
     private FastObjCache64<RegionInfo> coastline15 = new FastObjCache64<>((x, z) -> downgradeCoast(x, z, this.coastline1));
-    // + zoom = 128 block size
+    // + zoom = 64 block size
     private FastObjCache64<RegionInfo> coastline2 = new FastObjCache64<>((x, z) -> zoom(x, z, this.coastline15::sample));
-    // + final voronoi (x8) = 1024 block size
+    // + final voronoi (x16) = 1024 block size
 
     public RegionInfo sampleRegionByBlock(int x, int z) {
         return voronoiZoom(x, z, 16, this.coastline2);
