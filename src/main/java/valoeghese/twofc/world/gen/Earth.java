@@ -313,6 +313,7 @@ public class Earth extends WorldGen {
         int getSuitableConnections(@Out GraphEdge[] edges, Vertex vertex) {
             int i = 0;
             for (GraphEdge edge : vertex.edges) {
+                // This deals with edges not necessarily being specified in a uniform direction relative to our vertex
                 Vertex flowTo = vertex;
                 Vertex flowFrom = edge.from == vertex ? edge.to : edge.from;
 
