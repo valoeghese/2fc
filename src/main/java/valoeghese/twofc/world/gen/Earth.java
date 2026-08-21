@@ -8,9 +8,11 @@ import valoeghese.twofc.util.maths.Vec2f;
 import valoeghese.twofc.util.noise.Noise;
 import valoeghese.twofc.world.kingdom.Voronoi;
 
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.IntUnaryOperator;
 
 /**
  * World generator for earth.
@@ -44,9 +46,21 @@ public class Earth extends WorldGen {
         }
     }
 
+    public record Outflow(@Nonnull Face face, int borderRiverAltitude) {
+    }
+
     // Public for debug
     // (terrain) type: 0 = ocean, 1 = mountains, 2 = floodplains, 3 = (coastal) mountains
-    public record RegionInfo(int type, @Nullable Face outflow1, @Nullable Face outflow2) {
+    public record RegionInfo(int type, @Nullable Outflow outflow1, @Nullable Outflow outflow2) {
+        public int baseBorderHeight() {
+            // Base height input for border river height algorithm to this region
+            return outflow1 == null ? 0 : outflow2 == null ? outflow1.borderRiverAltitude : Math.max(outflow1.borderRiverAltitude, outflow2.borderRiverAltitude);
+        }
+
+        public int borderAltitudeFrom(int fromType, IntUnaryOperator nextInt) {
+            return Earth.borderRiverHeight(baseBorderHeight(), this.type, fromType, nextInt);
+        }
+
         public static final int OCEAN = 0;
         public static final int MOUNTAINS = 1;
         public static final int FLOODPLAIN = 2;
@@ -79,10 +93,25 @@ public class Earth extends WorldGen {
 
             return new RegionInfo(type, null, null);
         } else {
-            return new RegionInfo(1, null, null);
+            return new RegionInfo(RegionInfo.MOUNTAINS, null, null);
         }
     }
     private final FastObjCache64<RegionInfo> regionTypeWithoutFlowsCache = new FastObjCache64<>(this::regionInfo);
+
+    // flow INTO, flow FROM
+    private static int borderRiverHeight(int baseHeight, int intoRegion, int fromRegion, IntUnaryOperator nextInt) {
+        if (intoRegion == RegionInfo.OCEAN) {
+            return 0;
+        }
+        boolean intoMountains = RegionInfo.isMountains(intoRegion);
+
+        return baseHeight + switch (fromRegion) {
+            case RegionInfo.MOUNTAINS -> intoMountains ? (10 + nextInt.applyAsInt(20)) : (6 + nextInt.applyAsInt(20));
+            case RegionInfo.COASTAL_MOUNTAINS -> 5 + nextInt.applyAsInt(16);
+            case RegionInfo.FLOODPLAIN -> nextInt.applyAsInt(5);
+            default -> 0;
+        };
+    }
 
     private RegionInfo regionTypeWithFlows(int x, int z) {
         RegionInfo centre = regionTypeWithoutFlowsCache.sample(x, z);
@@ -97,17 +126,17 @@ public class Earth extends WorldGen {
         int west = regionTypeWithoutFlowsCache.sample(x, z + 1).type;
         int south = regionTypeWithoutFlowsCache.sample(x + 1, z).type;
 
-        List<Face> options = new ArrayList<>();
-        if (east == RegionInfo.OCEAN) options.add(Face.EAST);
-        if (north == RegionInfo.OCEAN) options.add(Face.NORTH);
-        if (west == RegionInfo.OCEAN) options.add(Face.WEST);
-        if (south == RegionInfo.OCEAN) options.add(Face.SOUTH);
+        List<Outflow> options = new ArrayList<>();
+        if (east == RegionInfo.OCEAN) options.add(new Outflow(Face.EAST, 0));
+        if (north == RegionInfo.OCEAN) options.add(new Outflow(Face.NORTH, 0));
+        if (west == RegionInfo.OCEAN) options.add(new Outflow(Face.WEST, 0));
+        if (south == RegionInfo.OCEAN) options.add(new Outflow(Face.SOUTH, 0));
 
         int hash = Voronoi.random2(x, z, this.jgSeed, -1);
         Random random = new Random(hash);
 
-        Face selected;
-        Face selected2;
+        Outflow selected;
+        Outflow selected2;
         if (centre.type == RegionInfo.FLOODPLAIN) {
             selected = options.get(random.nextInt(options.size()));
             selected2 = options.get(random.nextInt(options.size()));
@@ -115,10 +144,12 @@ public class Earth extends WorldGen {
             // allow assumptions that only selected1 can flow into a land mass to survive.
             selected2 = options.remove(random.nextInt(options.size()));
 
-            if (east == RegionInfo.FLOODPLAIN) options.add(Face.EAST);
-            if (north == RegionInfo.FLOODPLAIN) options.add(Face.NORTH);
-            if (west == RegionInfo.FLOODPLAIN) options.add(Face.WEST);
-            if (south == RegionInfo.FLOODPLAIN) options.add(Face.SOUTH);
+            int floodplainToFloodplainBorderHeight = borderRiverHeight(0, RegionInfo.FLOODPLAIN, RegionInfo.FLOODPLAIN, random::nextInt);
+
+            if (east == RegionInfo.FLOODPLAIN) options.add(new Outflow(Face.EAST, floodplainToFloodplainBorderHeight));
+            if (north == RegionInfo.FLOODPLAIN) options.add(new Outflow(Face.NORTH, floodplainToFloodplainBorderHeight));
+            if (west == RegionInfo.FLOODPLAIN) options.add(new Outflow(Face.WEST, floodplainToFloodplainBorderHeight));
+            if (south == RegionInfo.FLOODPLAIN) options.add(new Outflow(Face.SOUTH, floodplainToFloodplainBorderHeight));
 
             selected = options.isEmpty() ? null : options.get(random.nextInt(options.size()));
 
@@ -195,7 +226,7 @@ public class Earth extends WorldGen {
     }
     // Root: 16 block size
     // + zoom = 32 block size
-    private FastObjCache64<RegionInfo> coastline1 = new FastObjCache64<>((x, z) -> zoom(x, z, (x_, z_) -> voronoiZoom(x_, z_, 16, this.regionTypeCache)));
+    private FastObjCache64<RegionInfo> coastline1 = new FastObjCache64<>((x, z) -> zoom(x, z, (x_, z_) -> voronoiZoom(x_, z_, 16, this.regionTypeWithoutFlowsCache)));
     private FastObjCache64<RegionInfo> coastline15 = new FastObjCache64<>((x, z) -> downgradeCoast(x, z, this.coastline1));
     // + zoom = 64 block size
     private FastObjCache64<RegionInfo> coastline2 = new FastObjCache64<>((x, z) -> zoom(x, z, this.coastline15::sample));
@@ -219,31 +250,36 @@ public class Earth extends WorldGen {
         RegionInfo south = cache.sample(x + 1, z);
         RegionInfo west = cache.sample(x, z + 1);
 
-        List<Face> options = new ArrayList<>();
+        Random random = new Random(Voronoi.random2(x, z, this.jgSeed + offset, -1));
+        random.nextInt();
+
+        List<Outflow> options = new ArrayList<>();
         if (north.outflow1 != null) {
-            options.add(Face.NORTH);
-            if (north.type == RegionInfo.FLOODPLAIN) options.add(Face.NORTH);
+            Outflow northF = new Outflow(Face.NORTH, regionType.borderAltitudeFrom(north.type, random::nextInt));
+            options.add(northF);
+            if (north.type == RegionInfo.FLOODPLAIN) options.add(northF);
         }
         if (east.outflow1 != null) {
-            options.add(Face.EAST);
-            if (east.type == RegionInfo.FLOODPLAIN) options.add(Face.EAST);
+            Outflow eastF = new Outflow(Face.EAST, regionType.borderAltitudeFrom(east.type, random::nextInt));
+            options.add(eastF);
+            if (east.type == RegionInfo.FLOODPLAIN) options.add(eastF);
         }
         if (south.outflow1 != null) {
-            options.add(Face.SOUTH);
-            if (south.type == RegionInfo.FLOODPLAIN) options.add(Face.SOUTH);
+            Outflow southF = new Outflow(Face.SOUTH, regionType.borderAltitudeFrom(south.type, random::nextInt));
+            options.add(southF);
+            if (south.type == RegionInfo.FLOODPLAIN) options.add(southF);
         }
         if (west.outflow1 != null) {
-            options.add(Face.WEST);
-            if (west.type == RegionInfo.FLOODPLAIN) options.add(Face.WEST);
+            Outflow westF = new Outflow(Face.WEST, regionType.borderAltitudeFrom(west.type, random::nextInt));
+            options.add(westF);
+            if (west.type == RegionInfo.FLOODPLAIN) options.add(westF);
         }
 
         if (options.isEmpty()) {
             return regionType;
         }
 
-        Random random = new Random(Voronoi.random2(x, z, this.jgSeed + offset, -1));
-        random.nextInt();
-        Face selected = options.get(random.nextInt(options.size()));
+        Outflow selected = options.get(random.nextInt(options.size()));
 
         if (chance < 1.0f && random.nextFloat() > chance) {
             return regionType;
@@ -526,10 +562,10 @@ public class Earth extends WorldGen {
         // Pick positions for the outflows of this region
         RiverGen[] gen = new RiverGen[region.outflow2 == null ? 1 : 2];
 
-        gen[0] = RiverGen.create(region.outflow1, x, z, this.jgSeed, vertices, random);
+        gen[0] = RiverGen.create(region.outflow1.face, x, z, this.jgSeed, vertices, random);
 
         if (gen.length > 1) {
-            gen[1] = RiverGen.create(region.outflow2, x, z, this.jgSeed + 321, vertices, random);
+            gen[1] = RiverGen.create(region.outflow2.face, x, z, this.jgSeed + 321, vertices, random);
         }
 
         // -----
